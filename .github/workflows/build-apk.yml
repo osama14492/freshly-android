@@ -6,6 +6,8 @@ on:
     paths:
       - 'FRESHLY_ANDROID_UPLOAD-1.zip'
       - '.github/workflows/build-apk.yml'
+      - 'cashier.html'
+      - 'menu.html'
 
 permissions:
   contents: read
