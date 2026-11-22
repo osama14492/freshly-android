@@ -37,7 +37,7 @@ jobs:
           source = Path("app/src/main/assets/menu.html").read_text()
           marker = "const INITIAL_MENU_DATA = "
           start = source.index(marker) + len(marker)
-          end = source.index(";", start)
+          end = source.index(";\\n", start)
           data = json.loads(source[start:end])
           missing = [item["image"] for item in data["items"]
                      if item.get("image", "").startswith("images/")
