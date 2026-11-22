@@ -26,7 +26,41 @@ jobs:
           test -f app/src/main/assets/freshly-logo.png
           cp cashier.html app/src/main/assets/cashier.html
           cp menu.html app/src/main/assets/menu.html
+          # Restore the original, item-matched FRESHLY menu photos from the menu repository.
+          git clone --depth 1 https://github.com/osama14492/FRESHLY-MENU-.git /tmp/freshly-menu
           mkdir -p app/src/main/assets/images
+          cp /tmp/freshly-menu/images/*.webp app/src/main/assets/images/
+          # Verify every built-in menu item points to an image packaged in this APK.
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          source = Path("app/src/main/assets/menu.html").read_text()
+          marker = "const INITIAL_MENU_DATA = "
+          start = source.index(marker) + len(marker)
+          depth = 0
+          quote = None
+          escaped = False
+          end = None
+          for i, ch in enumerate(source[start:], start):
+              if quote:
+                  if escaped: escaped = False
+                  elif ch == "\\\\": escaped = True
+                  elif ch == quote: quote = None
+              elif ch in ('"', "'", "`"): quote = ch
+              elif ch == "{": depth += 1
+              elif ch == "}":
+                  depth -= 1
+                  if depth == 0:
+                      end = i + 1
+                      break
+          data = json.loads(source[start:end])
+          missing = [item["image"] for item in data["items"]
+                     if item.get("image", "").startswith("images/")
+                     and not (Path("app/src/main/assets") / item["image"]).is_file()]
+          if missing:
+              raise SystemExit("Missing original menu images: " + ", ".join(missing))
+          print(f"Verified {len(data['items'])} menu items; all local image paths exist.")
+          PY
           cp app/src/main/assets/freshly-logo.png app/src/main/assets/images/freshly_logo.png
           echo '--- packaged web assets ---'
           ls -lah app/src/main/assets
