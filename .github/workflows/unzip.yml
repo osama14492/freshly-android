@@ -1,0 +1,39 @@
+name: Auto Unzip Archive
+
+on:
+  push:
+    paths:
+      - '**.zip' # يعمل تلقائيًا فقط عند رفع أو تعديل أي ملف بصيغة .zip
+  workflow_dispatch: # يتيح لك تشغيله يدويًا من تبويب Actions أيضًا
+
+permissions:
+  contents: write # صلاحية الكتابة والتعديل داخل المستودع
+
+jobs:
+  extract-zip:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract zip files and remove archives
+        run: |
+          shopt -s nullglob
+          for zipfile in *.zip; do
+            echo "Extracting $zipfile..."
+            unzip -o "$zipfile" -d ./
+            rm "$zipfile"
+          done
+
+      - name: Commit and push extracted files
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: extract zip archive automatically"
+            git push
+          else
+            echo "No new changes to commit."
+          fi
