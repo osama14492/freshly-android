@@ -901,6 +901,17 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `).join('');
 
+    // Keep every menu tile visible even when a stored Firebase image URL is unavailable.
+    // The generated category illustration is a safe local fallback inside Android WebView.
+    grid.querySelectorAll('.item-thumb img').forEach((img, index) => {
+      img.addEventListener('error', () => {
+        const item = filtered[index];
+        if (!item) return;
+        img.onerror = null;
+        img.src = makeDrinkImage(getItemTitle(item), item.categoryId);
+      }, { once: true });
+    });
+
     grid.querySelectorAll('.item-card').forEach(card => {
       card.addEventListener('click', () => {
         const id = card.getAttribute('data-id');
