@@ -32,13 +32,13 @@ jobs:
           cp /tmp/freshly-menu/images/*.webp app/src/main/assets/images/
           # Verify every built-in menu item points to an image packaged in this APK.
           python3 - <<'PY'
-          import json, re
+          import json
           from pathlib import Path
           source = Path("app/src/main/assets/menu.html").read_text()
-          match = re.search(r"const INITIAL_MENU_DATA = (\\{.*?\\});", source, re.S)
-          if not match:
-              raise SystemExit("INITIAL_MENU_DATA was not found")
-          data = json.loads(match.group(1))
+          marker = "const INITIAL_MENU_DATA = "
+          start = source.index(marker) + len(marker)
+          end = source.index(";", start)
+          data = json.loads(source[start:end])
           missing = [item["image"] for item in data["items"]
                      if item.get("image", "").startswith("images/")
                      and not (Path("app/src/main/assets") / item["image"]).is_file()]
