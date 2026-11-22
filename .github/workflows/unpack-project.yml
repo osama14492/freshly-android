@@ -16,7 +16,7 @@ jobs:
       - name: Extract project ZIP
         run: |
           unzip -o FRESHLY_ANDROID_UPLOAD-1.zip -d .
-rm FRESHLY_ANDROID_UPLOAD-1.zip
+                rm FRESHLY_ANDROID_UPLOAD-1.zip
       - name: Save project files
         run: |
           git config user.name "github-actions[bot]"
