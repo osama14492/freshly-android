@@ -18,6 +18,29 @@ jobs:
         uses: actions/checkout@v4
       - name: Extract Android project
         run: unzip -o FRESHLY_ANDROID_UPLOAD-1.zip -d .
+      - name: Align Java and Kotlin JVM targets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle")
+          s = p.read_text()
+          needle = "android {"
+          addition = """android {
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
+          """
+          if needle not in s:
+              raise SystemExit("android block not found in app/build.gradle")
+          s = s.replace(needle, addition, 1)
+          p.write_text(s)
+          PY
+          echo '--- patched app/build.gradle ---'
+          cat app/build.gradle
       - name: Inspect Android project
         run: |
           pwd
