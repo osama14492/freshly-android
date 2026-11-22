@@ -30,6 +30,11 @@ jobs:
           git clone --depth 1 https://github.com/osama14492/FRESHLY-MENU-.git /tmp/freshly-menu
           mkdir -p app/src/main/assets/images
           cp /tmp/freshly-menu/images/*.webp app/src/main/assets/images/
+          # Recover the original product JPGs deleted from the public menu repo.
+          git -C /tmp/freshly-menu fetch --depth 1 origin 3368c4cb6c11cd840d3dbd44420a804fdee93aed
+          mkdir -p /tmp/freshly-menu-legacy
+          git -C /tmp/freshly-menu archive FETCH_HEAD | tar -x -C /tmp/freshly-menu-legacy
+          cp /tmp/freshly-menu-legacy/*.jpg app/src/main/assets/images/
           # Verify every built-in menu item points to an image packaged in this APK.
           python3 - <<'PY'
           import json
