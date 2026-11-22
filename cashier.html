@@ -999,13 +999,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return `<div class="detail-line"><span>${escapeHtml(name)} × ${qty}</span><b>${formatMoney(price*qty)}</b></div>`;
     }).join('');
     const total=kind==='held'?Number(o.total||cart.reduce((a,c)=>a+Number(c.price||0)*Number(c.qty||1),0)):Number(o.netTotal??o.total??0);
-    host.innerHTML=`<div class="detail-head">${kind==='held'?'⏳ طلب معلق':'✅ فاتورة مدفوعة'} · ${escapeHtml(o.id||'')}</div>
+    const safeId=escapeHtml(String(o.id||''));
+    host.innerHTML=`<div class="detail-head">${kind==='held'?'⏳ طلب معلق':'✅ فاتورة مدفوعة'} · ${safeId}</div>
       <div>العميل / الغرفة / الطاولة: <b>${escapeHtml(o.customer||o.roomName||o.tableName||'—')}</b></div>
       <div>التاريخ: ${escapeHtml(o.date||'—')} · الحالة: ${escapeHtml(o.orderStatus||o.status||(kind==='held'?'معلق':'مدفوع'))}</div>
       ${o.orderComment||o.comment?`<div style="margin-top:4px">💬 ${escapeHtml(o.orderComment||o.comment)}</div>`:''}
       <div style="margin-top:6px">${lines||'لا توجد أصناف مسجلة'}</div>
       <div class="detail-total"><span>الإجمالي</span><span>${formatMoney(total)}</span></div>
-      ${kind==='held'?`<button class="btn btn-gold" style="margin-top:7px;padding:5px 8px" onclick="loadHeldOrderToCart(${JSON.stringify(String(o.id))},true)">تحميل الطلب للكاشير</button>`:`<button class="btn btn-dark" style="margin-top:7px;padding:5px 8px" onclick="viewSaleInvoice(${JSON.stringify(String(o.id))})">طباعة / عرض الفاتورة</button>`}`;
+      ${kind==='held'?'<button type="button" class="btn btn-gold" data-lookup-action="load-held" data-order-id="'+safeId+'" style="margin-top:7px;padding:5px 8px">تحميل الطلب للكاشير</button>':'<button type="button" class="btn btn-dark" data-lookup-action="view-sale" data-order-id="'+safeId+'" style="margin-top:7px;padding:5px 8px">طباعة / عرض الفاتورة</button>'}`;
     host.style.display='block';
   }
   window.showInvoiceLookupDetails=showInvoiceLookupDetails;
@@ -1015,10 +1016,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const pending=state.held.filter(o=>lookupMatchesOrder(o,q)).slice(0,8);
     const paid=state.sales.filter(o=>lookupMatchesOrder(o,q)).slice(0,8);
     const rows=[];
-    pending.forEach(o=>{rows.push(`<div class="lookup-result"><b>⏳ ${escapeHtml(o.customer||'طلب معلق')}</b> · ${escapeHtml(o.id)}<div>معلق · ${formatMoney(o.total||0)}</div><button class="btn btn-gold" style="padding:4px 7px;margin-top:4px" onclick="showInvoiceLookupDetails('held',${JSON.stringify(String(o.id))})">عرض الأصناف والتفاصيل</button></div>`)});
-    paid.forEach(o=>{rows.push(`<div class="lookup-result"><b>✅ ${escapeHtml(o.customer||'فاتورة مدفوعة')}</b> · ${escapeHtml(o.id)}<div>${escapeHtml(o.date||'')} · ${formatMoney(o.netTotal??o.total??0)}</div><button class="btn btn-gold" style="padding:4px 7px;margin-top:4px" onclick="showInvoiceLookupDetails('sale',${JSON.stringify(String(o.id))})">عرض الأصناف والتفاصيل</button></div>`)});
+    pending.forEach(o=>{const id=escapeHtml(String(o.id));rows.push(`<div class="lookup-result"><b>⏳ ${escapeHtml(o.customer||'طلب معلق')}</b> · ${id}<div>معلق · ${formatMoney(o.total||0)}</div><button type="button" class="btn btn-gold" data-lookup-action="details-held" data-order-id="${id}" style="padding:4px 7px;margin-top:4px">عرض الأصناف والتفاصيل</button></div>`);});
+    paid.forEach(o=>{const id=escapeHtml(String(o.id));rows.push(`<div class="lookup-result"><b>✅ ${escapeHtml(o.customer||'فاتورة مدفوعة')}</b> · ${id}<div>${escapeHtml(o.date||'')} · ${formatMoney(o.netTotal??o.total??0)}</div><button type="button" class="btn btn-gold" data-lookup-action="details-sale" data-order-id="${id}" style="padding:4px 7px;margin-top:4px">عرض الأصناف والتفاصيل</button></div>`);});
     host.innerHTML=rows.join('')||'<div class="lookup-result">لا توجد فاتورة أو طلب مطابق</div>';
   }
+  function handleInvoiceLookupClick(event){
+    const button=event.target.closest('button[data-lookup-action]');
+    if(!button)return;
+    const id=button.getAttribute('data-order-id');
+    switch(button.getAttribute('data-lookup-action')){
+      case 'details-held': showInvoiceLookupDetails('held',id); break;
+      case 'details-sale': showInvoiceLookupDetails('sale',id); break;
+      case 'load-held': window.loadHeldOrderToCart(id,true); break;
+      case 'view-sale': window.viewSaleInvoice(id); break;
+    }
+  }
+  document.getElementById('invoiceLookupResults').addEventListener('click',handleInvoiceLookupClick);
+  document.getElementById('invoiceSelectedDetails').addEventListener('click',handleInvoiceLookupClick);
   window.showHeldOrderDetails=function(id){
     const o=state.held.find(x=>x.id===id);if(!o)return;
     const lines=(o.cart||[]).map(c=>`${c.name||c.itemName||c.itemId||c.id||'صنف'} × ${c.qty||1} — ${formatMoney(c.price||0)}`).join('\n');
