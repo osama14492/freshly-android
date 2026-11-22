@@ -18,6 +18,17 @@ jobs:
         uses: actions/checkout@v4
       - name: Extract Android project
         run: unzip -o FRESHLY_ANDROID_UPLOAD-1.zip -d .
+      - name: Use current POS and menu source files
+        run: |
+          test -f app/src/main/assets/home.html
+          test -f app/src/main/assets/freshly-logo.png
+          cp cashier.html app/src/main/assets/cashier.html
+          cp menu.html app/src/main/assets/menu.html
+          mkdir -p app/src/main/assets/images
+          cp app/src/main/assets/freshly-logo.png app/src/main/assets/images/freshly_logo.png
+          echo '--- packaged web assets ---'
+          ls -lah app/src/main/assets
+          ls -lah app/src/main/assets/images
       - name: Align Java and Kotlin JVM targets
         run: |
           python3 - <<'PY'
