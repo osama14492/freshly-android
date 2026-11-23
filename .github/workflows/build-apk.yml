@@ -161,7 +161,9 @@ jobs:
       - name: Prepare complete delivery package
         run: |
           mkdir -p delivery/Android-Project
-          unzip -q FRESHLY_ANDROID_UPLOAD-1.zip -d delivery/Android-Project
+          # Package the exact patched source tree used to build this APK, not the older input ZIP.
+          cp -a settings.gradle build.gradle gradle.properties app .github delivery/Android-Project/
+          cp README_AR.md delivery/Android-Project/README_AR.md
           cp cashier.html menu.html README_AR.md delivery/
           cp app/build/outputs/apk/debug/app-debug.apk delivery/FRESHLY.apk
           cp app/src/main/assets/freshly-logo.png delivery/freshly-logo.png
