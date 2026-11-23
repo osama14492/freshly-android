@@ -30,12 +30,12 @@ jobs:
           gradle=Path("app/build.gradle")
           s=gradle.read_text()
           if "androidx.biometric:biometric" not in s:
-              s=s.replace("dependencies {", "dependencies {\\n    implementation 'androidx.biometric:biometric:1.1.0'\\n    implementation 'androidx.fragment:fragment-ktx:1.8.5'", 1)
+              s=s.replace("dependencies {", "dependencies {\n    implementation 'androidx.biometric:biometric:1.1.0'\n    implementation 'androidx.fragment:fragment-ktx:1.8.5'", 1)
           gradle.write_text(s)
           manifest=Path("app/src/main/AndroidManifest.xml")
           m=manifest.read_text()
           if "android.permission.USE_BIOMETRIC" not in m:
-              m=m.replace("<application", '<uses-permission android:name="android.permission.USE_BIOMETRIC" />\\n    <application', 1)
+              m=m.replace("<application", '<uses-permission android:name="android.permission.USE_BIOMETRIC" />\n    <application', 1)
           m=m.replace('android:allowBackup="true"', 'android:allowBackup="false"')
           manifest.write_text(m)
           print("Password/biometric source, dependencies and manifest installed.")
@@ -52,7 +52,7 @@ jobs:
           start=s.index("  document.getElementById('exportBackupBtn').addEventListener('click',()=>{")
           end=s.index("  let pendingReminderTimer=null;", start)
           block=Path("FRESHLY_BACKUP_RESTORE_BLOCK.js").read_text()
-          p.write_text(s[:start] + block + "\\n" + s[end:])
+          p.write_text(s[:start] + block + "\n" + s[end:])
           print("Installed complete validated local backup/restore handlers.")
           PY
           cp cashier.html app/src/main/assets/cashier.html
