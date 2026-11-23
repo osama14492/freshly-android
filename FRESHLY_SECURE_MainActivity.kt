@@ -30,7 +30,6 @@ class MainActivity : FragmentActivity() {
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private val chooserRequest = 4102
     private val prefs by lazy { getSharedPreferences("freshly_security", MODE_PRIVATE) }
-    private var navigationApproved = false
     private var hasOpenedHome = false
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -57,11 +56,7 @@ class MainActivity : FragmentActivity() {
                 val protected = uri.host == "appassets.androidplatform.net" &&
                     (uri.path?.endsWith("/cashier.html") == true || uri.path?.endsWith("/menu.html") == true)
                 if (!protected) return false
-                if (navigationApproved) { navigationApproved = false; return false }
-                authenticateForEntry {
-                    navigationApproved = true
-                    webView.post { webView.loadUrl(uri.toString()) }
-                }
+                authenticateForEntry { webView.post { webView.loadUrl(uri.toString()) } }
                 return true
             }
         }
