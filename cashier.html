@@ -32,10 +32,10 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
 
-  body { background-color: #07080b; color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; overflow: hidden; }
+  body { background-color: #07080b; color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
 
   .phone-frame {
-    width: 100%; max-width: 430px; height: min(94vh, 870px); height: min(94dvh, 870px); max-height: 870px;
+    width: 100%; max-width: 430px; height: 94vh; max-height: 870px;
     background: var(--bg-dark); display: flex; flex-direction: column; position: relative;
     overflow: hidden; box-shadow: 0 0 40px rgba(0,0,0,0.9); border: 1px solid var(--border-gold); border-radius: 24px;
   }
@@ -66,7 +66,7 @@
   .selector-pill select { background: transparent; color: var(--gold-light); border: none; font-weight: 700; font-size: 0.72rem; outline: none; cursor: pointer; }
   .selector-pill select option { background: var(--bg-panel); color: var(--text-main); }
 
-  .main-content { flex: 1; min-height:0; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; position: relative; }
+  .main-content { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; position: relative; }
   .view-section { display: none; flex-direction: column; gap: 8px; height: 100%; flex: 1; }
   .view-section.active { display: flex; }
 
@@ -102,7 +102,7 @@
   .btn-dark { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-subtle); }
   .btn-danger { background: rgba(239, 68, 68, 0.18); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.4); }
 
-  .nav-bar { background: var(--bg-panel); border-top: 1px solid var(--border-gold); display: flex; justify-content: space-around; align-items: center; padding: 8px 4px calc(12px + env(safe-area-inset-bottom)) 4px; flex-shrink: 0; z-index: 100; box-shadow: 0 -4px 15px rgba(0,0,0,0.5); }
+  .nav-bar { background: var(--bg-panel); border-top: 1px solid var(--border-gold); display: flex; justify-content: space-around; align-items: center; padding: 8px 4px 12px 4px; flex-shrink: 0; z-index: 100; box-shadow: 0 -4px 15px rgba(0,0,0,0.5); }
   .nav-btn { background: transparent; color: var(--text-muted); border: none; padding: 4px 6px; border-radius: 8px; font-size: 0.65rem; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; }
   .nav-btn.active { color: var(--gold-main); }
   .nav-btn .icon { font-size: 1.05rem; }
@@ -170,8 +170,6 @@
   .invoice-selected-details .detail-head { color:var(--gold-main); font-weight:900; margin-bottom:5px; }
   .invoice-selected-details .detail-total { display:flex; justify-content:space-between; font-weight:900; color:var(--gold-main); padding-top:7px; }
   .lookup-result { padding:5px 7px !important; }
-  #addItemModal { z-index:10020; padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom)); }
-  #addItemModal .modal-content { max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); overflow-y:auto; }
 </style>
 </head>
 <body>
@@ -194,23 +192,6 @@
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
           <button class="btn btn-dark" onclick="printDirectReceipt()">🖨️ طباعة الإيصال</button>
           <button class="btn btn-gold" onclick="sendWhatsAppReceipt()">💬 إرسال للواتساب</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="addItemModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="addItemModalTitle">
-      <div class="modal-content">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-          <strong id="addItemModalTitle" style="color:var(--gold-main)">➕ إضافة صنف للفاتورة</strong>
-          <button type="button" class="btn btn-danger" id="cancelAddItemBtn" style="padding:4px 8px">إغلاق</button>
-        </div>
-        <label for="newItemName">اسم الصنف</label>
-        <input id="newItemName" class="input-field" type="text" autocomplete="off" placeholder="اكتب اسم الصنف">
-        <label for="newItemPrice">السعر بالجنيه المصري</label>
-        <input id="newItemPrice" class="input-field" type="number" min="0" step="0.01" inputmode="decimal" value="300">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
-          <button type="button" class="btn btn-dark" id="cancelAddItemBtn2">إلغاء</button>
-          <button type="button" class="btn btn-gold" id="saveAddItemBtn">إضافة للفاتورة</button>
         </div>
       </div>
     </div>
@@ -239,6 +220,7 @@
             <select id="currencySelect">
               <option value="EGP">🇪🇬 EGP</option>
               <option value="EUR">🇪🇺 EUR</option>
+              <option value="USD">🇺🇸 USD ($)</option>
             </select>
           </div>
         </div>
@@ -537,6 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function formatMoney(amount) {
     const num = Number(amount || 0);
     const clean = Number.isInteger(num) ? num.toString() : num.toFixed(2);
+    if (state.currency === 'USD') return `${clean} $`;
     return state.currency === 'EGP' ? `${clean} EGP` : `${clean} €`;
   }
 
@@ -547,7 +530,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getUnitPrice(item) {
     if (!item) return 0;
-    return state.currency === 'EGP' ? Number(item.priceEGP || 300) : Number(item.priceEUR || 5);
+    if (state.currency === 'EGP') return Number(item.priceEGP || 300);
+    const eurPrice = Number(item.priceEUR || 5);
+    return state.currency === 'USD' ? Math.ceil(eurPrice * 1.1 * 2) / 2 : eurPrice;
   }
 
   // **إعداد وتشغيل صوت التنبيه**
@@ -645,36 +630,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   window.addItemPrompt = function() {
-    const modal = document.getElementById('addItemModal');
-    const nameInput = document.getElementById('newItemName');
-    const priceInput = document.getElementById('newItemPrice');
-    if (!modal || !nameInput || !priceInput) return;
-    nameInput.value = '';
-    priceInput.value = '300';
-    modal.style.display = 'flex';
-    setTimeout(() => nameInput.focus(), 50);
-  };
-
-  function closeAddItemModal() {
-    const modal = document.getElementById('addItemModal');
-    if (modal) modal.style.display = 'none';
-  }
-  ['cancelAddItemBtn','cancelAddItemBtn2'].forEach(id => {
-    const button = document.getElementById(id);
-    if (button) button.addEventListener('click', closeAddItemModal);
-  });
-  document.getElementById('saveAddItemBtn').addEventListener('click', () => {
-    const name = document.getElementById('newItemName').value.trim();
-    const price = Number(document.getElementById('newItemPrice').value);
-    if (!name) { document.getElementById('newItemName').focus(); return; }
-    if (!Number.isFinite(price) || price < 0) { document.getElementById('newItemPrice').focus(); return; }
+    const name = prompt("أدخل اسم الصنف:");
+    if (!name) return;
+    const price = Number(prompt("السعر (EGP):", "300") || 300);
     const id = 'custom_' + Date.now();
     state.items.push({ id, names: { ar: name, en: name }, priceEGP: price, priceEUR: price / 55 });
     state.cart.push({ itemId: id, qty: 1, size: 'كبير', sugar: 'عادي', ice: 'وسط', note: '' });
-    closeAddItemModal();
     renderCartFull();
-  });
-
+  };
 
   function renderCartFull() {
     const list = document.getElementById('cartItemsListFull');
@@ -1029,28 +992,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const vals=[order.customer,order.customerName,order.name,order.room,order.roomNumber,order.roomNo,order.room_number,order.table,order.tableNumber,order.tableNo,order.table_number,order.roomName,order.tableName,order.id];
     return vals.some(v=>normalizeOrderLookup(v).includes(q));
   }
-  function getStoredCartLine(c) {
-    const item = state.items.find(i => String(i.id) === String(c.itemId || c.id));
-    const qty = Math.max(1, Number(c.qty || 1));
-    const unit = Number(c.price) > 0 ? Number(c.price) : (item ? getUnitPrice(item) : 0);
-    const name = c.name || c.itemName || (item ? getItemTitle(item) : '') || c.itemId || c.id || 'صنف';
-    return { name, qty, unit, total: unit * qty };
-  }
   function showInvoiceLookupDetails(kind,id){
     const host=document.getElementById('invoiceSelectedDetails'); if(!host)return;
     const o=kind==='held'?state.held.find(x=>String(x.id)===String(id)):state.sales.find(x=>String(x.id)===String(id));
     if(!o){host.style.display='none';return;}
-    const lines=(o.cart||[]).map(c=>{
-      const line=getStoredCartLine(c);
-      return `<div class="detail-line"><span>${escapeHtml(line.name)} × ${line.qty}</span><b>${formatMoney(line.total)}</b></div>`;
+    const cart=o.cart||[];
+    const lines=cart.map(c=>{
+      const name=c.name||c.itemName||c.itemId||c.id||'صنف';
+      const qty=Number(c.qty||1), price=Number(c.price||0);
+      return `<div class="detail-line"><span>${escapeHtml(name)} × ${qty}</span><b>${formatMoney(price*qty)}</b></div>`;
     }).join('');
-    const calculated=(o.cart||[]).reduce((sum,c)=>sum+getStoredCartLine(c).total,0);
-    const total=kind==='held'?(Number(o.total)>0?Number(o.total):calculated):Number(o.netTotal??o.total??calculated);
+    const total=kind==='held'?Number(o.total||cart.reduce((a,c)=>a+Number(c.price||0)*Number(c.qty||1),0)):Number(o.netTotal??o.total??0);
     const safeId=escapeHtml(String(o.id||''));
     host.innerHTML=`<div class="detail-head">${kind==='held'?'⏳ طلب معلق':'✅ فاتورة مدفوعة'} · ${safeId}</div>
-      <div>العميل / الغرفة / الطاولة: <b>${escapeHtml(o.customer||o.roomName||o.tableName||o.room||o.table||'—')}</b></div>
+      <div>العميل / الغرفة / الطاولة: <b>${escapeHtml(o.customer||o.roomName||o.tableName||'—')}</b></div>
       <div>التاريخ: ${escapeHtml(o.date||'—')} · الحالة: ${escapeHtml(o.orderStatus||o.status||(kind==='held'?'معلق':'مدفوع'))}</div>
-      ${o.paymentMethod?`<div>طريقة الدفع: ${escapeHtml(o.paymentMethod)}</div>`:''}
       ${o.orderComment||o.comment?`<div style="margin-top:4px">💬 ${escapeHtml(o.orderComment||o.comment)}</div>`:''}
       <div style="margin-top:6px">${lines||'لا توجد أصناف مسجلة'}</div>
       <div class="detail-total"><span>الإجمالي</span><span>${formatMoney(total)}</span></div>
@@ -1083,7 +1039,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('invoiceSelectedDetails').addEventListener('click',handleInvoiceLookupClick);
   window.showHeldOrderDetails=function(id){
     const o=state.held.find(x=>x.id===id);if(!o)return;
-    const lines=(o.cart||[]).map(c=>{const x=getStoredCartLine(c);return `${x.name} × ${x.qty} — ${formatMoney(x.total)}`;}).join('\n');
+    const lines=(o.cart||[]).map(c=>`${c.name||c.itemName||c.itemId||c.id||'صنف'} × ${c.qty||1} — ${formatMoney(c.price||0)}`).join('\n');
     alert(`تفاصيل الطلب ${o.id}\nالعميل/الغرفة/الطاولة: ${o.customer||''}\nالتاريخ: ${o.date||''}\nالحالة: ${o.status||'pending'}\nالتعليق: ${o.comment||'لا يوجد'}\n${lines}\nالإجمالي: ${formatMoney(o.total||0)}`);
   };
   document.getElementById('customerNameInput').addEventListener('input',e=>renderInvoiceLookup(e.target.value));
@@ -1109,7 +1065,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function getSaleById(id) { return state.sales.find(s => s.id === id); }
   window.viewSaleInvoice = function(id) {
     const s = getSaleById(id); if (!s) return;
-    const lines = (s.cart || []).map(c => { const x=getStoredCartLine(c); return `${x.name} × ${x.qty} — ${formatMoney(x.total)}`; }).join('\n');
+    const lines = (s.cart || []).map(c => `${c.name || c.itemName || c.itemId || c.id || 'صنف'} × ${c.qty || 1} — ${formatMoney(c.price || 0)}`).join('\n');
     alert(`فاتورة ${s.id}\nالعميل/الغرفة/الطاولة: ${s.customer || ''}\nالتاريخ: ${s.date || ''}\nطريقة الدفع: ${s.paymentMethod || ''}\nالكاشير: ${s.cashier || ''}\n${lines}\nالإجمالي الأصلي: ${formatMoney(s.originalTotal ?? s.total)}\nالصافي الحالي: ${formatMoney(s.netTotal ?? s.total)}\n${s.cancelled?'ملغاة':''}`);
   };
   window.editSaleItems = function(id) {
@@ -1204,17 +1160,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const totalsFor = sales => sales.reduce((acc, sale) => {
-      const currency = String(sale.currency || 'EGP').toUpperCase() === 'EUR' ? 'EUR' : 'EGP';
-      acc[currency] += Number(sale.netTotal !== undefined ? sale.netTotal : sale.total || 0);
+      const currency = String(sale.currency || 'EGP').toUpperCase();
+      const key = ['EGP', 'EUR', 'USD'].includes(currency) ? currency : 'EGP';
+      acc[key] += Number(sale.netTotal !== undefined ? sale.netTotal : sale.total || 0);
       return acc;
-    }, { EGP: 0, EUR: 0 });
+    }, { EGP: 0, EUR: 0, USD: 0 });
+    const usdToEgpRate = exchangeRate / 1.1;
     const money = (amount, currency) => `${Number(amount || 0).toFixed(2)} ${currency}`;
     const displaySales = totals => mode === 'convert'
-      ? money(totals.EGP + totals.EUR * exchangeRate, 'EGP')
-      : [totals.EGP ? money(totals.EGP, 'EGP') : '', totals.EUR ? money(totals.EUR, 'EUR') : ''].filter(Boolean).join(' + ') || '0.00 EGP';
+      ? money(totals.EGP + totals.EUR * exchangeRate + totals.USD * usdToEgpRate, 'EGP')
+      : [totals.EGP ? money(totals.EGP, 'EGP') : '', totals.EUR ? money(totals.EUR, 'EUR') : '', totals.USD ? money(totals.USD, 'USD') : ''].filter(Boolean).join(' + ') || '0.00 EGP';
 
     let sumCustody = 0, sumExpenses = 0, totalOrders = 0;
-    const sumSalesByCurrency = { EGP: 0, EUR: 0 };
+    const sumSalesByCurrency = { EGP: 0, EUR: 0, USD: 0 };
     const tbody = document.getElementById('dailyBreakdownBody');
     tbody.innerHTML = dates.map(d => {
       const daySales = state.sales.filter(s => s.date === d);
@@ -1225,14 +1183,15 @@ document.addEventListener('DOMContentLoaded', () => {
       sumCustody += cust; sumExpenses += dayExp; totalOrders += daySales.length;
       sumSalesByCurrency.EGP += dayTotals.EGP;
       sumSalesByCurrency.EUR += dayTotals.EUR;
+      sumSalesByCurrency.USD += dayTotals.USD;
       return `<tr><td style="font-weight:700;">${d}</td><td>${daySales.length}</td><td>${cust.toFixed(2)} EGP</td><td style="color:var(--danger);">${dayExp.toFixed(2)} EGP</td><td style="color:var(--gold-main); font-weight:800;">${displaySales(dayTotals)}</td></tr>`;
     }).join('');
 
     const totalSalesDisplay = displaySales(sumSalesByCurrency);
-    const netDrawerEGP = sumCustody + sumSalesByCurrency.EGP + (mode === 'convert' ? sumSalesByCurrency.EUR * exchangeRate : 0) - sumExpenses;
+    const netDrawerEGP = sumCustody + sumSalesByCurrency.EGP + (mode === 'convert' ? sumSalesByCurrency.EUR * exchangeRate + sumSalesByCurrency.USD * usdToEgpRate : 0) - sumExpenses;
     const netDrawerDisplay = mode === 'convert'
       ? money(netDrawerEGP, 'EGP')
-      : `${money(sumCustody + sumSalesByCurrency.EGP - sumExpenses, 'EGP')}${sumSalesByCurrency.EUR ? ' | مبيعات ' + money(sumSalesByCurrency.EUR, 'EUR') : ''}`;
+      : `${money(sumCustody + sumSalesByCurrency.EGP - sumExpenses, 'EGP')}${sumSalesByCurrency.EUR ? ' | مبيعات ' + money(sumSalesByCurrency.EUR, 'EUR') : ''}${sumSalesByCurrency.USD ? ' | مبيعات ' + money(sumSalesByCurrency.USD, 'USD') : ''}`;
 
     document.getElementById('dailyBreakdownFoot').innerHTML = `<tr style="background:rgba(212,175,55,0.16); font-weight:900;"><td>الإجمالي</td><td>${totalOrders}</td><td>${sumCustody.toFixed(2)} EGP</td><td style="color:var(--danger);">${sumExpenses.toFixed(2)} EGP</td><td style="color:var(--gold-main);">${totalSalesDisplay}</td></tr>`;
     document.getElementById('statTotalSalesVal').textContent = totalSalesDisplay;
