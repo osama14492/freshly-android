@@ -162,7 +162,10 @@ jobs:
         run: |
           mkdir -p delivery/Android-Project
           # Package the exact patched source tree used to build this APK, not the older input ZIP.
-          cp -a settings.gradle build.gradle gradle.properties app .github delivery/Android-Project/
+          cp -a settings.gradle build.gradle gradle.properties .github delivery/Android-Project/
+          mkdir -p delivery/Android-Project/app
+          cp app/build.gradle delivery/Android-Project/app/
+          cp -a app/src delivery/Android-Project/app/
           cp README_AR.md delivery/Android-Project/README_AR.md
           cp cashier.html menu.html README_AR.md delivery/
           cp app/build/outputs/apk/debug/app-debug.apk delivery/FRESHLY.apk
