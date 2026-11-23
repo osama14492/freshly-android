@@ -1301,7 +1301,15 @@ document.addEventListener('DOMContentLoaded', () => {
     renderReports();
     const reportSection = document.getElementById('view-reports');
     const printable = reportSection.cloneNode(true);
-    printable.querySelectorAll('.no-print').forEach(element => element.remove());
+    // نسخة الطباعة تحتوي التقرير فقط؛ لا نطبع أدوات الفترة أو سجل الفواتير أو أدوات التحكم حتى لو تغيرت أصنافها لاحقًا.
+    printable.querySelectorAll('.no-print, #reportPeriodSelect, #customDateRangeBox, #reportRatesBox, #salesHistoryList, #printReportBtn, #exportReportPdfBtn, #shareReportWhatsAppBtn, #custodyAmountInput, #custodyCurrencyInput, #expenseAmountInput, #expenseCurrencyInput, #expenseDescInput').forEach(element => {
+      const removablePanel = element.closest('.panel-box.no-print');
+      if (removablePanel) removablePanel.remove();
+      else element.remove();
+    });
+    printable.querySelectorAll('.panel-box').forEach(panel => {
+      if (panel.querySelector('#salesHistoryList') || panel.querySelector('#reportRatesBox')) panel.remove();
+    });
     printable.classList.add('report-print-sheet');
 
     const printedAt = new Date();
