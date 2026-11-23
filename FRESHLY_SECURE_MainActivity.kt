@@ -3,10 +3,15 @@ package com.freshly.premier
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.ContentValues
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.text.InputType
 import android.webkit.WebChromeClient
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -48,6 +53,7 @@ class MainActivity : FragmentActivity() {
         webView.settings.allowContentAccess = true
         webView.settings.javaScriptCanOpenWindowsAutomatically = true
         webView.settings.setSupportMultipleWindows(false)
+        webView.addJavascriptInterface(BackupBridge(), "FRESHLYNative")
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
                 assetLoader.shouldInterceptRequest(request.url)
@@ -79,6 +85,30 @@ class MainActivity : FragmentActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() { if (webView.canGoBack()) webView.goBack() else finish() }
         })
+    }
+
+    private inner class BackupBridge {
+        @JavascriptInterface
+        fun saveBackup(json: String, requestedName: String): String {
+            if (webView.url?.host != "appassets.androidplatform.net") return "ERROR"
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return "UNSUPPORTED"
+            val safeName = requestedName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                .ifBlank { "FRESHLY_POS_BACKUP.json" }
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, safeName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/FRESHLY")
+            }
+            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return "ERROR"
+            return try {
+                val output = contentResolver.openOutputStream(uri) ?: throw IllegalStateException("Cannot open backup file")
+                output.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                "OK"
+            } catch (_: Exception) {
+                contentResolver.delete(uri, null, null)
+                "ERROR"
+            }
+        }
     }
 
     private fun openHome() {
