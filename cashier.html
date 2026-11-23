@@ -1435,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('fp_company_settings_v1',JSON.stringify(companySettings));applyReminderSchedule();alert('تم حفظ بيانات الشركة وإعدادات التذكير');
   });
   document.getElementById('exportBackupBtn').addEventListener('click',()=>{
-    const keys=['fp_items_v3','fp_sales_v3','fp_held_v3','fp_custody_v3','fp_expenses_v3','fp_lang','fp_currency','fp_custom_sound','fp_report_currency_mode','fp_report_eur_rate','fp_report_usd_rate','fp_company_settings_v1'];
+    const keys=['fp_items_v3','fp_sales_v3','fp_held_v3','fp_custody_v3','fp_custody_currency_v1','fp_expenses_v3','fp_lang','fp_currency','fp_custom_sound','fp_report_currency_mode','fp_report_eur_rate','fp_report_usd_rate','fp_report_gbp_rate','fp_company_settings_v1'];
     const data={app:'FRESHLY_POS_BACKUP',version:1,createdAt:new Date().toISOString(),data:{}};keys.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)data.data[k]=v;});data.data.fp_items_v3=JSON.stringify(state.items);
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='FRESHLY_POS_BACKUP_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url);
   });
