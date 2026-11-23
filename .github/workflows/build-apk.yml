@@ -8,6 +8,8 @@ on:
       - '.github/workflows/build-apk.yml'
       - 'cashier.html'
       - 'menu.html'
+      - 'FRESHLY_SECURE_MainActivity.kt'
+      - 'FRESHLY_BACKUP_RESTORE_BLOCK.js'
 
 permissions:
   contents: read
