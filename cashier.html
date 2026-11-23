@@ -1345,57 +1345,105 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportSection = document.getElementById('view-reports');
     const printable = reportSection.cloneNode(true);
     printable.querySelectorAll('.no-print').forEach(element => element.remove());
-    const printHead=document.createElement('div'); printHead.className='company-print-head';
-    printHead.innerHTML=`${companyLogoSvg}<div class="mark">${escapeHtml(companySettings.name||'FRESHLY & PREMIER')}</div><div class="sub">${escapeHtml(companySettings.subtitle||'PREMIER BEVERIDGE CO')}</div><div class="details">${escapeHtml(companySettings.address||'')}${companySettings.phone?' · هاتف: '+escapeHtml(companySettings.phone):''}${companySettings.email?' · '+escapeHtml(companySettings.email):''}</div><div style="font-weight:800;margin-top:6px">التقارير المالية والإدارية</div><div style="font-size:12px;margin-top:4px">الفترة: ${escapeHtml(window.__freshlyReportRangeLabel||'')}</div>`;
-    printable.insertBefore(printHead,printable.firstChild);
-    const printWindow = window.open('', '_blank');
+    printable.classList.add('report-print-sheet');
 
+    const printedAt = new Date();
+    const dateText = printedAt.toLocaleDateString('ar-EG', {year:'numeric',month:'long',day:'numeric'});
+    const timeText = printedAt.toLocaleTimeString('ar-EG', {hour:'2-digit',minute:'2-digit'});
+    const printHead = document.createElement('header');
+    printHead.className = 'company-print-head';
+    printHead.innerHTML = `
+      <div class="print-brand-row">
+        <div class="print-brand-copy">
+          <div class="mark">${escapeHtml(companySettings.name || 'FRESHLY & PREMIER')}</div>
+          <div class="sub">${escapeHtml(companySettings.subtitle || 'PREMIER BEVERIDGE CO')}</div>
+          <div class="details">${escapeHtml(companySettings.address || '')}${companySettings.phone ? ' · هاتف: ' + escapeHtml(companySettings.phone) : ''}${companySettings.email ? ' · ' + escapeHtml(companySettings.email) : ''}</div>
+        </div>
+        <div class="print-logo">${companyLogoSvg}</div>
+      </div>
+      <div class="print-title-row">
+        <div><div class="print-report-title">التقرير المالي والإداري</div><div class="print-period">الفترة: ${escapeHtml(window.__freshlyReportRangeLabel || '')}</div></div>
+        <div class="print-date"><span>تاريخ الطباعة</span><strong>${escapeHtml(dateText)}</strong><small>${escapeHtml(timeText)}</small></div>
+      </div>`;
+    printable.insertBefore(printHead, printable.firstChild);
+
+    const printCss = `
+      @page { size: A4 landscape; margin: 9mm; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      html, body { margin:0; padding:0; background:#fff; color:#202733; font-family:Arial,Tahoma,sans-serif; direction:rtl; }
+      body { font-size:11px; }
+      .report-print-sheet { display:flex !important; flex-direction:column !important; gap:9px !important; width:100%; height:auto !important; overflow:visible !important; color:#202733 !important; background:#fff !important; }
+      .company-print-head { display:block; margin:0 0 5px; padding:0 0 9px; border-bottom:3px solid #b58b2b; color:#202733; }
+      .print-brand-row { display:flex; align-items:center; justify-content:space-between; gap:18px; }
+      .print-brand-copy { flex:1; text-align:right; }
+      .company-print-head .mark { font-size:23px; font-weight:900; color:#8b681c; letter-spacing:.3px; }
+      .company-print-head .sub { margin-top:2px; font-size:11px; font-weight:700; color:#566171; }
+      .company-print-head .details { margin-top:4px; font-size:9px; color:#657080; }
+      .print-logo { width:76px; height:66px; display:flex; align-items:center; justify-content:center; }
+      .print-logo svg { width:72px; height:64px; display:block; }
+      .print-title-row { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:9px; padding:8px 11px; border:1px solid #e2d4ae; border-radius:7px; background:#fbf8f0; }
+      .print-report-title { font-size:16px; font-weight:900; color:#263448; }
+      .print-period { margin-top:4px; font-size:10px; color:#596575; }
+      .print-date { min-width:150px; text-align:left; color:#596575; }
+      .print-date span,.print-date small { display:block; font-size:9px; }
+      .print-date strong { display:block; margin:3px 0; font-size:11px; color:#263448; }
+      .report-print-sheet .panel-box { display:block !important; width:100%; margin:0 !important; padding:9px 11px !important; border:1px solid #d9dee6 !important; border-radius:7px !important; background:#fff !important; color:#202733 !important; box-shadow:none !important; overflow:visible !important; break-inside:avoid; }
+      .report-print-sheet h3,.report-print-sheet h4 { margin:0 0 7px !important; color:#263448 !important; font-size:12px !important; font-weight:900 !important; }
+      .report-print-sheet table { width:100% !important; border-collapse:collapse !important; table-layout:auto; font-size:10px !important; }
+      .report-print-sheet thead { display:table-header-group; }
+      .report-print-sheet tfoot { display:table-footer-group; font-weight:900 !important; }
+      .report-print-sheet tr { break-inside:avoid; page-break-inside:avoid; }
+      .report-print-sheet th { padding:8px 7px !important; border:1px solid #c8d0dc !important; background:#26384d !important; color:#fff !important; font-weight:900 !important; text-align:right !important; }
+      .report-print-sheet td { padding:7px !important; border:1px solid #d8dee7 !important; color:#273244 !important; vertical-align:middle; text-align:right !important; }
+      .report-print-sheet tbody tr:nth-child(even) { background:#f5f7fa !important; }
+      .report-print-sheet tfoot td { background:#eee7d5 !important; color:#253247 !important; font-weight:900 !important; }
+      .report-print-sheet .panel-box[style*="grid-template-columns"] { display:grid !important; grid-template-columns:repeat(5,minmax(0,1fr)) !important; gap:7px !important; }
+      .report-print-sheet .panel-box[style*="grid-template-columns"] > div { padding:8px 5px !important; border:1px solid #e0e4eb; border-radius:6px; background:#f8fafc; }
+      .report-print-sheet .panel-box[style*="grid-template-columns"] > div:last-child { grid-column:auto !important; border-top:1px solid #e0e4eb !important; padding-top:8px !important; }
+      .report-print-sheet .panel-box[style*="grid-template-columns"] > div > div:first-child { color:#647084 !important; font-size:9px !important; }
+      .report-print-sheet .panel-box[style*="grid-template-columns"] > div > div:last-child { color:#263448 !important; font-size:12px !important; font-weight:900 !important; }
+      .report-print-sheet * { max-width:100%; }
+      @media print { body { margin:0; } .report-print-sheet { page-break-before:auto; } }
+    `;
+
+    const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      // Android/Chrome may block popups; print the report using the page's dedicated print CSS.
-      const fallbackHead=document.createElement('div');fallbackHead.id='temporaryCompanyPrintHead';fallbackHead.className='company-print-head';fallbackHead.innerHTML=`${companyLogoSvg}<div class="mark">${escapeHtml(companySettings.name||'FRESHLY & PREMIER')}</div><div class="sub">${escapeHtml(companySettings.subtitle||'PREMIER BEVERIDGE CO')}</div><div class="details">${escapeHtml(companySettings.address||'')}${companySettings.phone?' · هاتف: '+escapeHtml(companySettings.phone):''}${companySettings.email?' · '+escapeHtml(companySettings.email):''}</div><div style="font-weight:800;margin-top:6px">التقارير المالية والإدارية</div><div style="font-size:12px;margin-top:4px">الفترة: ${escapeHtml(window.__freshlyReportRangeLabel||'')}</div>`;reportSection.insertBefore(fallbackHead,reportSection.firstChild);
+      const fallbackHead = printHead.cloneNode(true);
+      fallbackHead.id = 'temporaryCompanyPrintHead';
+      reportSection.insertBefore(fallbackHead, reportSection.firstChild);
+      const style = document.createElement('style');
+      style.id = 'temporaryReportPrintStyle';
+      style.textContent = printCss + `
+        @media print {
+          html,body { display:block !important; width:100% !important; min-height:0 !important; height:auto !important; overflow:visible !important; background:#fff !important; color:#202733 !important; }
+          body.printing-report-only #view-reports { display:flex !important; flex-direction:column !important; }
+          body.printing-report-only .view-section:not(#view-reports), body.printing-report-only .app-header, body.printing-report-only .nav-bar, body.printing-report-only .no-print { display:none !important; }
+          .phone-frame { display:block !important; width:100% !important; max-width:none !important; height:auto !important; max-height:none !important; overflow:visible !important; border:0 !important; box-shadow:none !important; }
+          .main-content { display:block !important; overflow:visible !important; padding:0 !important; }
+        }`;
+      document.head.appendChild(style);
       document.body.classList.add('printing-report-only');
+      const cleanup = () => {
+        fallbackHead.remove();
+        style.remove();
+        document.body.classList.remove('printing-report-only');
+        window.removeEventListener('afterprint', cleanup);
+      };
+      window.addEventListener('afterprint', cleanup);
       window.print();
-      setTimeout(()=>fallbackHead.remove(),900);
-      setTimeout(() => document.body.classList.remove('printing-report-only'), 800);
+      setTimeout(cleanup, 3000);
       return;
     }
 
     printWindow.document.open();
-    printWindow.document.write(`<!DOCTYPE html>
-      <html lang="ar" dir="rtl"><head><meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>تقرير FRESHLY &amp; PREMIER</title>
-      <style>
-        *{box-sizing:border-box} body{font-family:Arial,Tahoma,sans-serif;color:#111;background:#fff;margin:18px}
-        h3,h4{font-size:16px;margin:0 0 12px;color:#111!important}
-        .company-print-head{text-align:center;margin:0 0 14px;padding-bottom:10px;border-bottom:2px solid #b58b2b}.company-print-head svg{display:block;margin:0 auto 4px}.company-print-head .mark{font-size:22px;font-weight:900;letter-spacing:1px;color:#9b7625}.company-print-head .sub{font-size:12px;color:#444}.company-print-head .details{font-size:11px;color:#444;margin-top:5px}
-        .view-section{display:flex!important;flex-direction:column;gap:10px;height:auto!important}
-        .panel-box{display:block;background:#fff!important;color:#111!important;border:1px solid #bbb;border-radius:6px;padding:10px;margin-bottom:8px;overflow:visible!important;break-inside:avoid}
-        table{width:100%;border-collapse:collapse;font-size:12px} th,td{border:1px solid #bbb;padding:7px;text-align:right;color:#111!important}
-        th{font-weight:bold} .data-table{width:100%} .data-table th,.data-table td{border:1px solid #bbb}
-        @media print{body{margin:10mm}.panel-box{break-inside:avoid}}
-      </style></head><body>${printable.outerHTML}
-<script>
-(function(){
- if(!window.QRCode){window.QRCode=function(el,opts){if(el){el.textContent=(opts&&opts.text)||'QR متاح عند الاتصال';el.style.cssText+=';display:flex;align-items:center;justify-content:center;min-height:72px;color:#d4af37;font-size:12px;text-align:center';}};}
- function badge(){if(document.getElementById('freshlyConnectionStatus'))return;var b=document.createElement('div');b.id='freshlyConnectionStatus';b.textContent=navigator.onLine?'متصل بانتظار المزامنة':'بدون إنترنت · الحفظ محلي';b.style.cssText='position:fixed;z-index:99999;bottom:5px;left:5px;padding:5px 9px;border-radius:20px;background:#151922;color:#fcf6ba;border:1px solid #d4af37;font:700 10px Arial;opacity:.92;pointer-events:none';document.body.appendChild(b);}
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',badge);else badge();
- window.addEventListener('online',function(){var b=document.getElementById('freshlyConnectionStatus');if(b)b.textContent='عاد الاتصال · جارٍ المزامنة';});
- window.addEventListener('offline',function(){var b=document.getElementById('freshlyConnectionStatus');if(b)b.textContent='بدون إنترنت · الحفظ محلي';});
-})();
-<\/script>
-</body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(companySettings.name || 'FRESHLY')} - التقرير المالي</title><style>${printCss}</style></head><body>${printable.outerHTML}</body></html>`);
     printWindow.document.close();
-    // تشغيل الطباعة بعد اكتمال بناء صفحة التقرير في نافذة الطباعة.
-    setTimeout(() => {
-      try {
-        printWindow.focus();
-        printWindow.print();
-      } catch (error) {
-        console.error('Report printing failed:', error);
-        alert('تعذر فتح الطباعة. حاول السماح بالنوافذ المنبثقة ثم أعد المحاولة.');
-      }
-    }, 400);
+    printWindow.onload = () => {
+      setTimeout(() => {
+        try { printWindow.focus(); printWindow.print(); }
+        catch (error) { console.error('Report printing failed:', error); alert('تعذر فتح الطباعة. حاول السماح بالنوافذ المنبثقة ثم أعد المحاولة.'); }
+      }, 350);
+    };
   }
   document.getElementById('printReportBtn').addEventListener('click', printCurrentReport);
   document.getElementById('exportReportPdfBtn').addEventListener('click', () => {
