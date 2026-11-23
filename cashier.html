@@ -391,14 +391,18 @@
 
         <div class="panel-box no-print">
           <h4 style="font-size:0.78rem; color:var(--gold-light); margin-bottom:6px;">تسجيل المصروفات اليومية</h4>
-          <div style="display:grid; grid-template-columns:1fr 1fr 1.2fr auto; gap:5px; align-items:flex-end;">
+          <div style="display:grid; grid-template-columns:1fr 1fr 0.8fr 1.2fr auto; gap:5px; align-items:flex-end;">
             <div>
               <label style="font-size:0.62rem; color:var(--text-muted);">التاريخ</label>
               <input type="date" id="expenseDateInput" class="input-field">
             </div>
             <div>
               <label style="font-size:0.62rem; color:var(--text-muted);">المبلغ</label>
-              <input type="number" id="expenseAmountInput" class="input-field">
+              <input type="number" id="expenseAmountInput" class="input-field" min="0" step="0.01">
+            </div>
+            <div>
+              <label style="font-size:0.62rem; color:var(--text-muted);">العملة</label>
+              <select id="expenseCurrencyInput" class="input-field"><option value="EGP">EGP جنيه</option><option value="USD">USD دولار</option><option value="EUR">EUR يورو</option><option value="GBP">GBP إسترليني</option></select>
             </div>
             <div>
               <label style="font-size:0.62rem; color:var(--text-muted);">البيان / السبب</label>
@@ -1222,20 +1226,20 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   function renderReports() {
-    // سجل الفواتير يظل متاحًا في الشاشة، لكنه لا يدخل ضمن التقرير المطبوع.
     renderSalesHistory();
     const period = document.getElementById('reportPeriodSelect').value;
     const customBox = document.getElementById('customDateRangeBox');
     const now = new Date();
     customBox.style.display = period === 'custom' ? 'grid' : 'none';
 
-    const mode = document.querySelector('input[name="reportCurrencyMode"]:checked')?.value || localStorage.getItem('fp_report_currency_mode') || 'convert';
-    const exchangeRate = Math.max(0, Number(document.getElementById('exchangeRateInput').value) || 0);
-    const usdExchangeRate = Math.max(0, Number(document.getElementById('usdExchangeRateInput').value) || 0);
-    localStorage.setItem('fp_report_usd_rate', String(usdExchangeRate));
-    localStorage.setItem('fp_report_currency_mode', mode);
-    localStorage.setItem('fp_report_eur_rate', String(exchangeRate));
-
+    // التقارير تعرض كل عملة منفصلة دون تحويل أو خلط بين العملات.
+    const currencies = ['EGP','USD','EUR','GBP'];
+    const money = (amount, currency='EGP') => `${Number(amount || 0).toFixed(2)} ${currency}`;
+    const blankTotals = () => ({ EGP:0, USD:0, EUR:0, GBP:0 });
+    const displayCurrencies = totals => {
+      const parts = currencies.filter(cur => Math.abs(Number(totals[cur] || 0)) > 0.00001).map(cur => money(totals[cur],cur));
+      return parts.join(' + ') || money(0,'EGP');
+    };
     const toLocalYMD = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
     const allDates = new Set();
     state.sales.forEach(s => { if (s.date) allDates.add(String(s.date).slice(0,10)); });
@@ -1243,104 +1247,79 @@ document.addEventListener('DOMContentLoaded', () => {
     Object.keys(state.expensesByDate || {}).forEach(d => allDates.add(d));
     const today = toLocalYMD(now);
     let dates = Array.from(allDates).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
-    const makeDateRange = (from, to) => {
-      const out = []; if (!from || !to || from > to) return out;
-      const cursor = new Date(from + 'T12:00:00'); const last = new Date(to + 'T12:00:00');
-      while (cursor <= last) { out.push(toLocalYMD(cursor)); cursor.setDate(cursor.getDate()+1); }
+    const makeDateRange = (from,to) => {
+      const out=[]; if(!from||!to||from>to)return out;
+      const cursor=new Date(from+'T12:00:00'), last=new Date(to+'T12:00:00');
+      while(cursor<=last){out.push(toLocalYMD(cursor));cursor.setDate(cursor.getDate()+1);}
       return out;
     };
-    if (period === 'today') dates = [today];
-    else if (period === '7days' || period === '30days') {
-      const days = period === '7days' ? 7 : 30;
-      const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      startDate.setDate(startDate.getDate() - (days - 1));
-      dates = makeDateRange(toLocalYMD(startDate), today);
-    } else if (period === 'custom') {
-      const start = document.getElementById('customStartDate').value;
-      const end = document.getElementById('customEndDate').value;
-      const first = start || (dates.length ? dates[0] : '');
-      const last = end || (dates.length ? dates[dates.length-1] : '');
-      dates = makeDateRange(first, last);
-    } else if (dates.length) dates = makeDateRange(dates[0], dates[dates.length-1]);
+    if(period==='today') dates=[today];
+    else if(period==='7days'||period==='30days'){
+      const days=period==='7days'?7:30, first=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      first.setDate(first.getDate()-(days-1)); dates=makeDateRange(toLocalYMD(first),today);
+    } else if(period==='custom'){
+      const first=document.getElementById('customStartDate').value, last=document.getElementById('customEndDate').value;
+      dates=makeDateRange(first||(dates.length?dates[0]:''),last||(dates.length?dates[dates.length-1]:''));
+    } else if(dates.length) dates=makeDateRange(dates[0],dates[dates.length-1]);
     dates.reverse();
 
-    const totalsFor = sales => sales.reduce((acc, sale) => {
-      if (sale.cancelled) return acc;
-      const currency = ['EUR','USD'].includes(String(sale.currency || 'EGP').toUpperCase()) ? String(sale.currency).toUpperCase() : 'EGP';
-      acc[currency] += Number(sale.netTotal !== undefined ? sale.netTotal : sale.total || 0);
+    const totalsFor = sales => sales.reduce((acc,sale)=>{
+      if(sale.cancelled)return acc;
+      const cur=String(sale.currency||'EGP').toUpperCase();
+      if(currencies.includes(cur)) acc[cur]+=Number(sale.netTotal!==undefined?sale.netTotal:sale.total||0);
+      else acc.EGP+=Number(sale.netTotal!==undefined?sale.netTotal:sale.total||0);
       return acc;
-    }, { EGP: 0, EUR: 0, USD: 0 });
-    const money = (amount, currency='EGP') => `${Number(amount || 0).toFixed(2)} ${currency}`;
-    const displayCurrencies = totals => {
-      if (mode === 'convert') {
-        if (totals.USD && !usdExchangeRate) return 'أدخل سعر صرف الدولار';
-        if (totals.EUR && !exchangeRate) return 'أدخل سعر صرف اليورو';
-        return money(totals.EGP + totals.USD * usdExchangeRate + totals.EUR * exchangeRate, 'EGP');
-      }
-      const parts = ['EGP','USD','EUR'].filter(c => Math.abs(totals[c] || 0) > 0.00001).map(c => money(totals[c], c));
-      return parts.join(' + ') || money(0, 'EGP');
+    },blankTotals());
+    const expensesFor = expenses => expenses.reduce((acc,x)=>{
+      const cur=currencies.includes(String(x.currency||'EGP').toUpperCase())?String(x.currency||'EGP').toUpperCase():'EGP';
+      acc[cur]+=Number(x.amount||0); return acc;
+    },blankTotals());
+    const netFor = (sales,expenses) => {
+      const net={...sales}; currencies.forEach(cur=>net[cur]-=expenses[cur]||0); return net;
     };
-    const displayNet = (totals, expensesEGP) => {
-      const net = { EGP: totals.EGP - expensesEGP, USD: totals.USD, EUR: totals.EUR };
-      if (mode === 'convert') {
-        if (net.USD && !usdExchangeRate) return 'أدخل سعر صرف الدولار';
-        if (net.EUR && !exchangeRate) return 'أدخل سعر صرف اليورو';
-        return money(net.EGP + net.USD * usdExchangeRate + net.EUR * exchangeRate, 'EGP');
-      }
-      return displayCurrencies(net);
-    };
-    const totalSales = { EGP: 0, USD: 0, EUR: 0 };
-    let sumCustody = 0, sumExpenses = 0, totalOrders = 0;
-    const tbody = document.getElementById('dailyBreakdownBody');
-    const rows = dates.map(d => {
-      const daySales = state.sales.filter(s => String(s.date || '').slice(0,10) === d && !s.cancelled);
-      const dayTotals = totalsFor(daySales);
-      const custody = Number((state.custodyByDate || {})[d] || 0);
-      const expenses = (state.expensesByDate || {})[d] || [];
-      const expenseTotal = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-      sumCustody += custody; sumExpenses += expenseTotal; totalOrders += daySales.length;
-      ['EGP','USD','EUR'].forEach(c => totalSales[c] += dayTotals[c]);
-      const expenseDetails = expenses.length ? expenses.map(x => `${escapeHtml(x.desc || 'مصروف')}: ${money(x.amount,'EGP')}`).join('<br>') : '—';
-      return `<tr><td style="font-weight:700;white-space:nowrap">${d}</td><td>${daySales.length}</td><td>${displayCurrencies(dayTotals)}</td><td style="color:var(--danger)">${money(expenseTotal,'EGP')}<div style="font-size:.62rem;color:var(--text-muted);margin-top:3px">${expenseDetails}</div></td><td style="font-weight:800;color:var(--success)">${displayNet(dayTotals,expenseTotal)}</td><td>${money(custody,'EGP')}</td></tr>`;
+    const totalSales=blankTotals(), totalExpenses=blankTotals();
+    let sumCustody=0,totalOrders=0;
+    const tbody=document.getElementById('dailyBreakdownBody');
+    const rows=dates.map(d=>{
+      const daySales=state.sales.filter(x=>String(x.date||'').slice(0,10)===d&&!x.cancelled);
+      const dayTotals=totalsFor(daySales);
+      const custody=Number((state.custodyByDate||{})[d]||0);
+      const expenses=(state.expensesByDate||{})[d]||[];
+      const dayExpenses=expensesFor(expenses);
+      sumCustody+=custody; totalOrders+=daySales.length;
+      currencies.forEach(cur=>{totalSales[cur]+=dayTotals[cur];totalExpenses[cur]+=dayExpenses[cur];});
+      const expenseDetails=expenses.length?expenses.map(x=>{
+        const cur=currencies.includes(String(x.currency||'EGP').toUpperCase())?String(x.currency||'EGP').toUpperCase():'EGP';
+        return `${escapeHtml(x.desc||'مصروف')}: ${money(x.amount,cur)}`;
+      }).join('<br>'):'—';
+      return `<tr><td style="font-weight:700;white-space:nowrap">${d}</td><td>${daySales.length}</td><td>${displayCurrencies(dayTotals)}</td><td style="color:var(--danger)">${displayCurrencies(dayExpenses)}<div style="font-size:.62rem;color:var(--text-muted);margin-top:3px">${expenseDetails}</div></td><td style="font-weight:800;color:var(--success)">${displayCurrencies(netFor(dayTotals,dayExpenses))}</td><td>${money(custody,'EGP')}</td></tr>`;
     });
-    tbody.innerHTML = rows.join('') || '<tr><td colspan="6" style="text-align:center;padding:14px">لا توجد بيانات في الفترة المحددة</td></tr>';
+    tbody.innerHTML=rows.join('')||'<tr><td colspan="6" style="text-align:center;padding:14px">لا توجد بيانات في الفترة المحددة</td></tr>';
+    const netTotals=netFor(totalSales,totalExpenses);
+    const netDrawer={...netTotals,EGP:netTotals.EGP+sumCustody};
+    document.getElementById('dailyBreakdownFoot').innerHTML=`<tr style="background:rgba(212,175,55,.16);font-weight:900"><td>إجمالي الفترة</td><td>${totalOrders}</td><td>${displayCurrencies(totalSales)}</td><td>${displayCurrencies(totalExpenses)}</td><td>${displayCurrencies(netTotals)}</td><td>${money(sumCustody,'EGP')}</td></tr>`;
+    document.getElementById('statTotalSalesVal').textContent=displayCurrencies(totalSales);
+    document.getElementById('statExpensesVal').textContent=displayCurrencies(totalExpenses);
+    document.getElementById('statNetRevenueVal').textContent=displayCurrencies(netTotals);
+    document.getElementById('statCustodyVal').textContent=money(sumCustody,'EGP');
+    document.getElementById('statNetDrawerVal').textContent=displayCurrencies(netDrawer);
 
-    const totalSalesDisplay = displayCurrencies(totalSales);
-    const netRevenueDisplay = displayNet(totalSales, sumExpenses);
-    let netDrawerDisplay;
-    if (mode === 'convert') {
-      netDrawerDisplay = (totalSales.USD && !usdExchangeRate) || (totalSales.EUR && !exchangeRate)
-        ? 'أدخل أسعار الصرف' : money(sumCustody + totalSales.EGP - sumExpenses + totalSales.USD*usdExchangeRate + totalSales.EUR*exchangeRate, 'EGP');
-    } else {
-      netDrawerDisplay = displayCurrencies({EGP:sumCustody + totalSales.EGP - sumExpenses, USD:totalSales.USD, EUR:totalSales.EUR});
-    }
-    document.getElementById('dailyBreakdownFoot').innerHTML = `<tr style="background:rgba(212,175,55,.16);font-weight:900"><td>إجمالي الفترة</td><td>${totalOrders}</td><td>${totalSalesDisplay}</td><td>${money(sumExpenses,'EGP')}</td><td>${netRevenueDisplay}</td><td>${money(sumCustody,'EGP')}</td></tr>`;
-    document.getElementById('statTotalSalesVal').textContent = totalSalesDisplay;
-    document.getElementById('statExpensesVal').textContent = money(sumExpenses,'EGP');
-    document.getElementById('statNetRevenueVal').textContent = netRevenueDisplay;
-    document.getElementById('statCustodyVal').textContent = money(sumCustody,'EGP');
-    document.getElementById('statNetDrawerVal').textContent = netDrawerDisplay;
-
-    const rangeLabel = period === 'custom'
-      ? `${dates.length ? dates[dates.length-1] : (document.getElementById('customStartDate').value || 'البداية')} إلى ${dates.length ? dates[0] : (document.getElementById('customEndDate').value || 'النهاية')}`
-      : period === 'today' ? today : period === '7days' ? `${dates[dates.length-1] || ''} إلى ${dates[0] || ''}` : period === '30days' ? `${dates[dates.length-1] || ''} إلى ${dates[0] || ''}` : (dates.length ? `${dates[dates.length-1]} إلى ${dates[0]}` : 'كل الأيام');
-    window.__freshlyReportRangeLabel = rangeLabel;
-    const reportText = [
-      'تقرير FRESHLY & PREMIER', `الفترة: ${rangeLabel}`, `عدد الفواتير: ${totalOrders}`,
-      `الإيرادات: ${totalSalesDisplay}`, `المصروفات: ${money(sumExpenses,'EGP')}`,
-      `صافي الإيرادات: ${netRevenueDisplay}`, `العهدة: ${money(sumCustody,'EGP')}`,
-      `رصيد الخزينة التقديري: ${netDrawerDisplay}`, '', 'التفصيل اليومي:',
-      ...dates.map(d => {
-        const daySales = state.sales.filter(s => String(s.date || '').slice(0,10) === d && !s.cancelled);
-        const t = totalsFor(daySales);
-        const ex = ((state.expensesByDate || {})[d] || []).reduce((a,b)=>a+Number(b.amount||0),0);
-        return `${d}: فواتير ${daySales.length} | إيرادات ${displayCurrencies(t)} | مصروفات ${money(ex,'EGP')} | صافي ${displayNet(t,ex)} | عهدة ${money((state.custodyByDate||{})[d]||0,'EGP')}`;
+    const rangeLabel=period==='custom'?`${dates.length?dates[dates.length-1]:(document.getElementById('customStartDate').value||'البداية')} إلى ${dates.length?dates[0]:(document.getElementById('customEndDate').value||'النهاية')}`:period==='today'?today:period==='7days'||period==='30days'?`${dates[dates.length-1]||''} إلى ${dates[0]||''}`:(dates.length?`${dates[dates.length-1]} إلى ${dates[0]}`:'كل الأيام');
+    window.__freshlyReportRangeLabel=rangeLabel;
+    window.__freshlyCurrentReportText=[
+      'تقرير FRESHLY & PREMIER',`الفترة: ${rangeLabel}`,`عدد الفواتير: ${totalOrders}`,
+      `الإيرادات: ${displayCurrencies(totalSales)}`,`المصروفات: ${displayCurrencies(totalExpenses)}`,
+      `صافي الإيرادات: ${displayCurrencies(netTotals)}`,`العهدة: ${money(sumCustody,'EGP')}`,
+      `رصيد الخزينة التقديري: ${displayCurrencies(netDrawer)}`,'','التفصيل اليومي:',
+      ...dates.map(d=>{
+        const sales=state.sales.filter(x=>String(x.date||'').slice(0,10)===d&&!x.cancelled), st=totalsFor(sales);
+        const ex=expensesFor((state.expensesByDate||{})[d]||[]);
+        return `${d}: فواتير ${sales.length} | إيرادات ${displayCurrencies(st)} | مصروفات ${displayCurrencies(ex)} | صافي ${displayCurrencies(netFor(st,ex))}`;
       })
     ].join('\n');
-    window.__freshlyCurrentReportText = reportText;
   }
 
-  function printCurrentReport() {
+    function printCurrentReport() {
     renderReports();
     const reportSection = document.getElementById('view-reports');
     const printable = reportSection.cloneNode(true);
@@ -1506,13 +1485,15 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('addExpenseBtn').addEventListener('click', () => {
     const d = document.getElementById('expenseDateInput').value || todayStr;
     const amount = Number(document.getElementById('expenseAmountInput').value || 0);
+    const currency = document.getElementById('expenseCurrencyInput').value || 'EGP';
     const desc = document.getElementById('expenseDescInput').value.trim() || 'مصروف';
     if (amount <= 0) return alert('أدخل مبلغ صحيح');
     if (!state.expensesByDate[d]) state.expensesByDate[d] = [];
-    state.expensesByDate[d].push({ amount, desc });
+    state.expensesByDate[d].push({ amount, currency, desc });
     persistState();
     renderReports();
     document.getElementById('expenseAmountInput').value = '';
+    document.getElementById('expenseCurrencyInput').value = 'EGP';
     document.getElementById('expenseDescInput').value = '';
     alert('تم تسجيل المصروف بنجاح 💸');
   });
