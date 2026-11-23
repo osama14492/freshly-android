@@ -1,0 +1,197 @@
+package com.freshly.premier
+
+import android.annotation.SuppressLint
+import android.app.AlertDialog
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.text.InputType
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.webkit.ValueCallback
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.Toast
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.webkit.WebViewAssetLoader
+import java.security.SecureRandom
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
+import android.util.Base64
+
+class MainActivity : FragmentActivity() {
+    private lateinit var webView: WebView
+    private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private val chooserRequest = 4102
+    private val prefs by lazy { getSharedPreferences("freshly_security", MODE_PRIVATE) }
+    private var navigationApproved = false
+    private var hasOpenedHome = false
+
+    @SuppressLint("SetJavaScriptEnabled")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        window.statusBarColor = android.graphics.Color.rgb(12, 14, 19)
+        window.navigationBarColor = android.graphics.Color.rgb(7, 8, 11)
+        val assetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this)).build()
+        webView = WebView(this)
+        setContentView(webView)
+        webView.settings.javaScriptEnabled = true
+        webView.settings.domStorageEnabled = true
+        webView.settings.databaseEnabled = true
+        webView.settings.allowFileAccess = false
+        webView.settings.allowContentAccess = true
+        webView.settings.javaScriptCanOpenWindowsAutomatically = true
+        webView.settings.setSupportMultipleWindows(false)
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
+                assetLoader.shouldInterceptRequest(request.url)
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val uri = request.url
+                val protected = uri.host == "appassets.androidplatform.net" &&
+                    (uri.path?.endsWith("/cashier.html") == true || uri.path?.endsWith("/menu.html") == true)
+                if (!protected) return false
+                if (navigationApproved) { navigationApproved = false; return false }
+                authenticateForEntry {
+                    navigationApproved = true
+                    webView.post { webView.loadUrl(uri.toString()) }
+                }
+                return true
+            }
+        }
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onShowFileChooser(webView: WebView?, callback: ValueCallback<Array<Uri>>?, params: FileChooserParams?): Boolean {
+                fileChooserCallback?.onReceiveValue(null)
+                fileChooserCallback = callback
+                val intent = params?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                    type = "*/*"; addCategory(Intent.CATEGORY_OPENABLE)
+                }
+                return try { startActivityForResult(intent, chooserRequest); true }
+                catch (_: Exception) { fileChooserCallback = null; false }
+            }
+        }
+        if (!prefs.contains("password_hash")) {
+            showPasswordSetup { hasOpenedHome = true; openHome() }
+        } else {
+            authenticateForEntry { hasOpenedHome = true; openHome() }
+        }
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() { if (webView.canGoBack()) webView.goBack() else finish() }
+        })
+    }
+
+    private fun openHome() {
+        webView.loadUrl("https://appassets.androidplatform.net/assets/home.html")
+    }
+
+    private fun showPasswordSetup(onDone: () -> Unit) {
+        val first = EditText(this).apply {
+            hint = "كلمة مرور جديدة (6 أحرف على الأقل)"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        val second = EditText(this).apply {
+            hint = "تأكيد كلمة المرور"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 8, 48, 0)
+            addView(first); addView(second)
+        }
+        val dialog = AlertDialog.Builder(this).setTitle("تأمين تطبيق FRESHLY")
+            .setMessage("أنشئ كلمة مرور خاصة بالتطبيق. يمكنك استخدام بصمة الهاتف بعد ذلك للدخول.")
+            .setView(box).setCancelable(false).setPositiveButton("حفظ", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val a = first.text.toString()
+                val b = second.text.toString()
+                if (a.length < 6) { first.error = "6 أحرف على الأقل"; return@setOnClickListener }
+                if (a != b) { second.error = "كلمتا المرور غير متطابقتين"; return@setOnClickListener }
+                savePassword(a); dialog.dismiss(); onDone()
+            }
+        }
+        dialog.show()
+    }
+
+    private fun savePassword(password: String) {
+        val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        prefs.edit().putString("password_salt", Base64.encodeToString(salt, Base64.NO_WRAP))
+            .putString("password_hash", hashPassword(password, salt)).apply()
+    }
+
+    private fun hashPassword(password: String, salt: ByteArray): String {
+        val spec = PBEKeySpec(password.toCharArray(), salt, 150000, 256)
+        return try {
+            Base64.encodeToString(SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+                .generateSecret(spec).encoded, Base64.NO_WRAP)
+        } finally { spec.clearPassword() }
+    }
+
+    private fun verifyPassword(password: String): Boolean = try {
+        val salt = Base64.decode(prefs.getString("password_salt", "") ?: "", Base64.NO_WRAP)
+        val expected = prefs.getString("password_hash", "") ?: ""
+        val actual = hashPassword(password, salt)
+        java.security.MessageDigest.isEqual(actual.toByteArray(), expected.toByteArray())
+    } catch (_: Exception) { false }
+
+    private fun authenticateForEntry(onSuccess: () -> Unit) {
+        val manager = BiometricManager.from(this)
+        if (manager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) ==
+            BiometricManager.BIOMETRIC_SUCCESS) {
+            val prompt = BiometricPrompt(this, ContextCompat.getMainExecutor(this),
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) { onSuccess() }
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                        showPasswordUnlock(onSuccess)
+                    }
+                    override fun onAuthenticationFailed() {
+                        Toast.makeText(this@MainActivity, "لم يتم التعرف على البصمة، حاول مرة أخرى", Toast.LENGTH_SHORT).show()
+                    }
+                })
+            val info = BiometricPrompt.PromptInfo.Builder()
+                .setTitle("الدخول إلى FRESHLY")
+                .setSubtitle("استخدم بصمة الهاتف أو كلمة مرور التطبيق")
+                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+                .setNegativeButtonText("استخدام كلمة المرور").build()
+            prompt.authenticate(info)
+        } else showPasswordUnlock(onSuccess)
+    }
+
+    private fun showPasswordUnlock(onSuccess: () -> Unit) {
+        val input = EditText(this).apply {
+            hint = "كلمة مرور التطبيق"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        val dialog = AlertDialog.Builder(this).setTitle("تأكيد الدخول").setView(input)
+            .setCancelable(false).setPositiveButton("دخول", null)
+            .setNegativeButton("إلغاء") { _, _ -> if (!hasOpenedHome) finish() }.create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (verifyPassword(input.text.toString())) { dialog.dismiss(); onSuccess() }
+                else input.error = "كلمة المرور غير صحيحة"
+            }
+        }
+        dialog.show()
+    }
+
+    @Deprecated("Deprecated for WebView file chooser compatibility")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == chooserRequest) {
+            val result = if (resultCode == RESULT_OK && data?.data != null) arrayOf(data.data!!) else null
+            fileChooserCallback?.onReceiveValue(result)
+            fileChooserCallback = null
+        }
+    }
+
+    override fun onDestroy() {
+        if (::webView.isInitialized) webView.destroy()
+        super.onDestroy()
+    }
+}
