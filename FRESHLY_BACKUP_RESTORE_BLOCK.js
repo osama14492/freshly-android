@@ -18,8 +18,16 @@
   document.getElementById('exportBackupBtn').addEventListener('click',()=>{
     try {
       const backup=createFreshlyBackupObject();
-      downloadFreshlyBackup(backup,'FRESHLY_POS_BACKUP_');
-      alert('تم إنشاء نسخة احتياطية كاملة من البيانات المحلية للكاشير والمنيو والمزامنة المعلقة. احفظ الملف في مكان آمن.');
+      const fileName='FRESHLY_POS_BACKUP_'+new Date().toISOString().slice(0,10)+'.json';
+      const json=JSON.stringify(backup,null,2);
+      if(window.FRESHLYNative && typeof window.FRESHLYNative.saveBackup==='function') {
+        const result=window.FRESHLYNative.saveBackup(json,fileName);
+        if(result==='OK') alert('تم حفظ النسخة الاحتياطية على الجهاز داخل Downloads/FRESHLY.');
+        else { downloadFreshlyBackup(backup,'FRESHLY_POS_BACKUP_'); alert('تعذر الحفظ المباشر. تم بدء تنزيل ملف النسخة الاحتياطية.'); }
+      } else {
+        downloadFreshlyBackup(backup,'FRESHLY_POS_BACKUP_');
+        alert('تم بدء تنزيل ملف النسخة الاحتياطية. احفظه في مكان آمن.');
+      }
     } catch(err){ console.error(err); alert('تعذر إنشاء النسخة الاحتياطية. لم يتم تغيير أي بيانات.'); }
   });
   document.getElementById('importBackupBtn').addEventListener('click',()=>document.getElementById('backupFileInput').click());
