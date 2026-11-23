@@ -60,7 +60,7 @@ class MainActivity : FragmentActivity() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val uri = request.url
                 val protected = uri.host == "appassets.androidplatform.net" &&
-                    (uri.path?.endsWith("/cashier.html") == true || uri.path?.endsWith("/menu.html") == true)
+                    uri.path?.endsWith("/cashier.html") == true
                 if (!protected) return false
                 authenticateForEntry { webView.post { webView.loadUrl(uri.toString()) } }
                 return true
