@@ -431,6 +431,28 @@
     margin: auto 0;
     text-align: center;
   }
+  #adminModal { z-index: 10000; padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  #adminModal .modal-card {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-height: 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+  }
+  #adminModal .admin-modal-actions {
+    position: sticky;
+    bottom: calc(-12px - env(safe-area-inset-bottom));
+    z-index: 10;
+    display: grid;
+    gap: 5px;
+    padding: 8px 0 calc(4px + env(safe-area-inset-bottom));
+    margin-top: 8px;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border-gold);
+  }
+  #adminModal .admin-modal-actions .btn { width: 100%; min-height: 40px; }
   #modalQrcode {
     background: #fff;
     padding: 10px;
@@ -655,8 +677,10 @@
         <div style="text-align:start; font-size:0.72rem; font-weight:800; color:var(--gold-light); margin-bottom:4px;">📋 الأصناف الحالية (<span id="adminTotalCount">0</span>):</div>
         <div id="adminItemsList" style="max-height:120px; overflow-y:auto; margin-bottom:8px;"></div>
 
-        <button class="btn btn-gold" style="margin-bottom:5px; background: linear-gradient(135deg, #10b981, #059669); color:#fff;" onclick="exportUpdatedHTML()">⬇️ تحميل ملف index.html المحدّث</button>
-        <button class="btn btn-dark" style="width:100%;" onclick="closeModal('adminModal')">Close / إغلاق</button>
+        <div class="admin-modal-actions">
+          <button class="btn btn-gold" style="background: linear-gradient(135deg, #10b981, #059669); color:#fff;" onclick="exportUpdatedHTML()">⬇️ تحميل ملف index.html المحدّث</button>
+          <button class="btn btn-dark" onclick="closeModal('adminModal')">Close / إغلاق</button>
+        </div>
       </div>
     </div>
 
