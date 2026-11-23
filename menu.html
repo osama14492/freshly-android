@@ -127,6 +127,35 @@
     gap: 4px;
   }
 
+  .menu-date-time-row {
+    display: grid;
+    grid-template-columns: auto minmax(0,1fr) auto minmax(0,1fr);
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    padding: 5px 6px;
+    border: 1px solid var(--border-gold);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--gold-light);
+    font-size: .62rem;
+    font-weight: 800;
+  }
+  .menu-date-time-input {
+    min-width: 0;
+    width: 100%;
+    padding: 5px 4px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 5px;
+    background: var(--bg-input);
+    color: var(--text-main);
+    color-scheme: dark;
+    font-size: .68rem;
+  }
+  @media (max-width:360px) {
+    .menu-date-time-row { grid-template-columns: auto minmax(0,1fr); }
+  }
+
   .selector-pill {
     display: flex;
     align-items: center;
@@ -510,6 +539,12 @@
           </div>
         </div>
       </div>
+      <div class="menu-date-time-row" aria-label="تاريخ ووقت الطلب">
+        <label for="menuOrderDate">التاريخ / Date</label>
+        <input type="date" id="menuOrderDate" class="menu-date-time-input">
+        <label for="menuOrderTime">الوقت / Time</label>
+        <input type="time" id="menuOrderTime" class="menu-date-time-input">
+      </div>
     </header>
 
     <!-- Permanent Prominent QR Banner Widget -->
@@ -767,6 +802,28 @@ document.addEventListener('DOMContentLoaded', () => {
     lastOrderText: ''
   };
 
+  // Editable order date/time: defaults to the device's local date and time.
+  const menuOrderDateInput = document.getElementById('menuOrderDate');
+  const menuOrderTimeInput = document.getElementById('menuOrderTime');
+  function localDateValue(date) {
+    const y = date.getFullYear();
+    const mo = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${mo}-${d}`;
+  }
+  function localTimeValue(date) {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }
+  const menuNow = new Date();
+  menuOrderDateInput.value = localDateValue(menuNow);
+  menuOrderTimeInput.value = localTimeValue(menuNow);
+  function getSelectedOrderDateTime() {
+    return {
+      date: menuOrderDateInput.value || localDateValue(new Date()),
+      time: menuOrderTimeInput.value || localTimeValue(new Date())
+    };
+  }
+
   function hasAnyContact() {
     const c = menuState.contact || {};
     return Boolean((c.whatsapp && c.whatsapp.trim()) || (c.phones && c.phones.trim()) || (c.address && c.address.trim()) || (c.social && c.social.trim()));
@@ -1004,14 +1061,17 @@ document.addEventListener('DOMContentLoaded', () => {
       cartItemsData.push({ id: it.id, itemId: it.id, name: getItemTitle(it), qty: c.qty, price: unit });
     });
 
+    const selectedOrderDateTime = getSelectedOrderDateTime();
+    const dateStr = selectedOrderDateTime.date;
+    const timeStr = selectedOrderDateTime.time;
     if (typeof sendOrderToCloudFirebase === 'function') {
-      sendOrderToCloudFirebase(customer, cartItemsData, subtotal);
+      sendOrderToCloudFirebase(customer, cartItemsData, subtotal, dateStr, timeStr);
     }
 
-    const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     menuState.lastOrderText = [
       `🍹 *New Order - FRESHLY & PREMIER*`,
       `📍 *Table / Room / Customer:* ${customer}`,
+      `📅 *Date:* ${dateStr}`,
       `🕒 *Time:* ${timeStr}`,
       `--------------------------`,
       ...textLines,
@@ -1022,6 +1082,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('receiptContent').innerHTML = `
       <div style="text-align:center; font-weight:900; font-size:0.82rem; border-bottom:2px solid #111; padding-bottom:3px; margin-bottom:4px;">FRESHLY &amp; PREMIER</div>
       <div><strong>📍 Table / Customer:</strong> ${customer}</div>
+      <div><strong>📅 Date:</strong> ${dateStr}</div>
       <div style="margin-bottom:4px;"><strong>🕒 Time:</strong> ${timeStr}</div>
       ${htmlLines.join('')}
       <div style="display:flex; justify-content:space-between; font-weight:900; font-size:0.85rem; margin-top:5px; padding-top:4px; border-top:2px solid #111;">
@@ -1296,15 +1357,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
   const cloudDb = firebase.database();
 
-  function sendOrderToCloudFirebase(customerName, cartItems, totalAmount) {
+  function sendOrderToCloudFirebase(customerName, cartItems, totalAmount, selectedDate, selectedTime) {
     const orderId = 'WEB-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7).toUpperCase();
     cloudDb.ref('pendingOrders/' + orderId).set({
       id: orderId,
       customer: customerName,
       cart: cartItems,
       total: totalAmount,
-      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      date: new Date().toISOString().split('T')[0],
+      time: selectedTime || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      date: selectedDate || new Date().toISOString().split('T')[0],
       status: 'pending'
     });
   }
