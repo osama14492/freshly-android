@@ -220,7 +220,7 @@
             <select id="currencySelect">
               <option value="EGP">🇪🇬 EGP</option>
               <option value="EUR">🇪🇺 EUR</option>
-              <option value="USD">🇺🇸 USD ($)</option>
+              <option value="USD">🇺🇸 USD</option>
             </select>
           </div>
         </div>
@@ -346,11 +346,15 @@
             <label style="display:flex; align-items:center; gap:5px;"><input type="radio" name="reportCurrencyMode" value="convert" checked> تحويل كل العملات إلى الجنيه المصري</label>
             <label style="display:flex; align-items:center; gap:5px;"><input type="radio" name="reportCurrencyMode" value="original"> إبقاء كل عملة كما هي</label>
           </div>
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-            <span style="font-size:0.7rem; font-weight:800; color:var(--gold-light);">سعر صرف اليورو مقابل الجنيه (1 EUR = EGP):</span>
-            <input type="number" id="exchangeRateInput" class="input-field" value="55" min="0.01" step="0.01" style="max-width:90px; text-align:center;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <label style="font-size:0.7rem;font-weight:800;color:var(--gold-light);">1 يورو = جنيه
+              <input type="number" id="exchangeRateInput" class="input-field" value="55" min="0.01" step="0.01" style="width:100%;text-align:center;">
+            </label>
+            <label style="font-size:0.7rem;font-weight:800;color:var(--gold-light);">1 دولار = جنيه
+              <input type="number" id="usdExchangeRateInput" class="input-field" value="" min="0.01" step="0.01" placeholder="أدخل السعر" style="width:100%;text-align:center;">
+            </label>
           </div>
-          <small style="font-size:0.6rem; color:var(--text-muted);">يُستخدم السعر في التقارير فقط، ويمكنك تعديله في أي وقت.</small>
+          <small style="font-size:0.6rem;color:var(--text-muted);">أدخل سعر الصرف الذي تعتمده. تُستخدم الأسعار في التقارير فقط.</small>
         </div>
 
         <div class="panel-box">
@@ -503,6 +507,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let state = loadState();
+  const currencySelectEl = document.getElementById('currencySelect');
+  currencySelectEl.value = state.currency;
+  currencySelectEl.addEventListener('change', () => { state.currency = currencySelectEl.value; persistState(); renderCartFull(); });
   let companySettings = JSON.parse(localStorage.getItem('fp_company_settings_v1') || '{"name":"FRESHLY & PREMIER","subtitle":"PREMIER BEVERIDGE CO","address":"","phone":"","email":"","reminderMinutes":5}');
   const companyLogoSvg = '<img src="freshly-logo.png" alt="FRESHLY" style="width:48px;height:48px;object-fit:contain;border-radius:7px">';
 
@@ -519,8 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function formatMoney(amount) {
     const num = Number(amount || 0);
     const clean = Number.isInteger(num) ? num.toString() : num.toFixed(2);
-    if (state.currency === 'USD') return `${clean} $`;
-    return state.currency === 'EGP' ? `${clean} EGP` : `${clean} €`;
+    return state.currency === 'EGP' ? `${clean} EGP` : state.currency === 'USD' ? `${clean} USD` : `${clean} €`;
   }
 
   function getItemTitle(item) {
@@ -530,9 +536,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getUnitPrice(item) {
     if (!item) return 0;
-    if (state.currency === 'EGP') return Number(item.priceEGP || 300);
-    const eurPrice = Number(item.priceEUR || 5);
-    return state.currency === 'USD' ? Math.ceil(eurPrice * 1.1 * 2) / 2 : eurPrice;
+    if (state.currency === 'EGP') return Number(item.priceEGP || 0);
+    if (state.currency === 'EUR') return Number(item.priceEUR || 0);
+    const usdRate = Number(document.getElementById('usdExchangeRateInput')?.value || localStorage.getItem('fp_report_usd_rate') || 0);
+    return Number(item.priceUSD || (usdRate > 0 ? Number(item.priceEGP || 0) / usdRate : 0));
   }
 
   // **إعداد وتشغيل صوت التنبيه**
@@ -629,15 +636,81 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  window.addItemPrompt = function() {
-    const name = prompt("أدخل اسم الصنف:");
-    if (!name) return;
-    const price = Number(prompt("السعر (EGP):", "300") || 300);
-    const id = 'custom_' + Date.now();
-    state.items.push({ id, names: { ar: name, en: name }, priceEGP: price, priceEUR: price / 55 });
-    state.cart.push({ itemId: id, qty: 1, size: 'كبير', sugar: 'عادي', ice: 'وسط', note: '' });
-    renderCartFull();
-  };
+  window.addItemPrompt = function() { openMenuItemPicker('cart'); };
+
+  // Menu picker uses the existing electronic-menu catalog stored on this device.
+  let pickerTarget = 'cart', pickerSaleId = null, pickerCategory = 'all', pickerDraft = [];
+  function getPublicMenu() {
+    let items = [], categories = [];
+    try { items = JSON.parse(localStorage.getItem('fp_public_items_v6') || '[]'); } catch(e) {}
+    try { categories = JSON.parse(localStorage.getItem('fp_public_cats_v6') || '[]'); } catch(e) {}
+    if (!Array.isArray(items) || !items.length) items = state.items || [];
+    return {items, categories: Array.isArray(categories) ? categories : []};
+  }
+  function menuName(item) { return item?.names?.[state.lang] || item?.names?.ar || item?.name || item?.id || 'صنف'; }
+  function openMenuItemPicker(target, saleId) {
+    pickerTarget = target; pickerSaleId = saleId || null; pickerCategory = 'all';
+    const sale = saleId ? getSaleById(saleId) : null;
+    pickerDraft = sale ? (sale.cart || []).map(c => ({...c, qty:Number(c.qty||1), price:Number(c.price||0), itemId:c.itemId||c.id||''})) : (state.cart || []).map(c => { const item=state.items.find(i=>i.id===c.itemId||i.id===c.id)||getPublicMenu().items.find(i=>i.id===c.itemId||i.id===c.id); return {...c, itemId:c.itemId||c.id||'', name:c.name||menuName(item), qty:Number(c.qty||1), price:c.price!==undefined?Number(c.price):getUnitPrice(item)}; });
+    let modal = document.getElementById('menuItemPickerModal');
+    if (!modal) {
+      modal = document.createElement('div'); modal.id='menuItemPickerModal';
+      modal.style.cssText='display:none;position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.82);padding:12px;align-items:center;justify-content:center;';
+      modal.innerHTML=`<div style="width:min(620px,100%);max-height:92vh;overflow:auto;background:#151922;color:#fff;border:1px solid #c9a43b;border-radius:14px;padding:14px;box-shadow:0 15px 50px #000;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b id="pickerTitle">اختيار صنف من المنيو</b><button type="button" class="btn btn-dark" id="pickerClose">✕</button></div>
+        <div id="pickerCategories" style="display:flex;gap:6px;overflow:auto;padding:10px 0;flex-wrap:wrap"></div>
+        <div id="pickerItems" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:190px;overflow:auto"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:12px 0">
+          <label style="font-size:12px">الكمية<input id="pickerQty" type="number" min="1" value="1" class="input-field" style="width:100%"></label>
+          <label style="font-size:12px">السعر للوحدة<input id="pickerPrice" type="number" min="0" step="0.01" class="input-field" style="width:100%"></label>
+          <button type="button" class="btn btn-gold" id="pickerAdd" style="align-self:end">إضافة الصنف</button>
+        </div>
+        <div style="font-weight:800;color:#d4af37;margin:8px 0">أصناف الفاتورة</div><div id="pickerDraftRows"></div>
+        <button type="button" class="btn btn-gold" id="pickerSave" style="width:100%;margin-top:12px">حفظ الفاتورة</button>
+      </div>`;
+      document.body.appendChild(modal);
+      modal.querySelector('#pickerClose').onclick=()=>modal.style.display='none';
+      modal.querySelector('#pickerAdd').onclick=()=>{
+        const id=modal.dataset.selectedId, item=getPublicMenu().items.find(x=>String(x.id)===String(id));
+        if(!item)return alert('اختر صنفًا من القائمة أولاً');
+        const qty=Math.max(1,Number(modal.querySelector('#pickerQty').value)||1), price=Math.max(0,Number(modal.querySelector('#pickerPrice').value)||0);
+        pickerDraft.push({itemId:item.id,id:item.id,name:menuName(item),qty,price,size:'كبير',sugar:'عادي',ice:'وسط',note:''}); renderPickerDraft();
+      };
+      modal.querySelector('#pickerSave').onclick=()=>{
+        if(!pickerDraft.length)return alert('أضف صنفًا واحدًا على الأقل');
+        if(pickerTarget==='cart'){
+          state.cart=pickerDraft.map(c=>({...c})); renderCartFull(); modal.style.display='none'; return;
+        }
+        const sale=getSaleById(pickerSaleId); if(!sale)return;
+        const reason=prompt('سبب تعديل الفاتورة:'); if(!reason||!reason.trim())return;
+        if(!sale.originalSnapshot)sale.originalSnapshot=JSON.parse(JSON.stringify(sale));
+        const newTotal=pickerDraft.reduce((sum,c)=>sum+Number(c.qty||0)*Number(c.price||0),0);
+        sale.adjustments=Array.isArray(sale.adjustments)?sale.adjustments:[];
+        sale.adjustments.push({type:'items_edited',reason:reason.trim(),previousCart:JSON.parse(JSON.stringify(sale.cart||[])),previousNetTotal:Number(sale.netTotal??sale.total??0),newCart:JSON.parse(JSON.stringify(pickerDraft)),newTotal,at:new Date().toISOString()});
+        sale.cart=JSON.parse(JSON.stringify(pickerDraft)); sale.total=newTotal; sale.netTotal=newTotal;
+        persistState(); renderReports(); renderSalesHistory(); modal.style.display='none'; alert('تم حفظ تعديل الفاتورة مع الاحتفاظ بسجلها السابق.');
+      };
+      modal.querySelector('#pickerCategories').onclick=e=>{const b=e.target.closest('[data-cat]');if(!b)return;pickerCategory=b.dataset.cat;renderPickerCatalog();};
+      modal.querySelector('#pickerItems').onclick=e=>{const b=e.target.closest('[data-item]');if(!b)return;const item=getPublicMenu().items.find(x=>String(x.id)===b.dataset.item);if(!item)return;modal.dataset.selectedId=item.id;const usdRate=Number(document.getElementById('usdExchangeRateInput')?.value||localStorage.getItem('fp_report_usd_rate')||0);const price=state.currency==='EUR'?Number(item.priceEUR||0):state.currency==='USD'?Number(item.priceUSD||(usdRate>0?Number(item.priceEGP||0)/usdRate:0)):Number(item.priceEGP||0);modal.querySelector('#pickerPrice').value=price;};
+      modal.querySelector('#pickerDraftRows').onclick=e=>{const b=e.target.closest('[data-remove]');if(b){pickerDraft.splice(Number(b.dataset.remove),1);renderPickerDraft();}};
+    }
+    modal.querySelector('#pickerTitle').textContent=target==='cart'?'إضافة أصناف للفاتورة':'تعديل أصناف الفاتورة '+saleId;
+    modal.querySelector('#pickerSave').textContent=target==='cart'?'اعتماد الأصناف في الفاتورة':'حفظ تعديل الفاتورة';
+    modal.style.display='flex'; renderPickerCatalog(); renderPickerDraft();
+  }
+  function renderPickerCatalog(){
+    const modal=document.getElementById('menuItemPickerModal'); if(!modal)return;
+    const {items,categories}=getPublicMenu();
+    modal.querySelector('#pickerCategories').innerHTML=[{id:'all',names:{ar:'كل الأقسام',en:'All'}} ,...categories].map(c=>`<button type="button" class="btn ${pickerCategory===c.id?'btn-gold':'btn-dark'}" data-cat="${String(c.id)}" style="padding:6px 9px">${escapeHtml(c.names?.[state.lang]||c.names?.ar||c.name||c.id)}</button>`).join('');
+    const filtered=items.filter(i=>pickerCategory==='all'||String(i.categoryId)===String(pickerCategory));
+    modal.querySelector('#pickerItems').innerHTML=filtered.map(i=>`<button type="button" class="btn btn-dark" data-item="${String(i.id)}" style="text-align:start;padding:9px;white-space:normal">${escapeHtml(menuName(i))}<small style="display:block;color:#d4af37">${Number(i.priceEGP||0)} EGP · ${Number(i.priceEUR||0)} EUR</small></button>`).join('')||'<div>لا توجد أصناف في هذا القسم</div>';
+  }
+  function renderPickerDraft(){
+    const host=document.querySelector('#menuItemPickerModal #pickerDraftRows'); if(!host)return;
+    host.innerHTML=pickerDraft.map((c,i)=>`<div style="display:grid;grid-template-columns:1fr 65px 85px 30px;gap:5px;align-items:center;padding:5px;border-bottom:1px solid #444;font-size:12px"><span>${escapeHtml(c.name||c.itemName||c.itemId||'صنف')}</span><input aria-label="الكمية" type="number" min="1" value="${Number(c.qty||1)}" data-qty="${i}" class="input-field" style="padding:5px"><input aria-label="السعر" type="number" min="0" step=".01" value="${Number(c.price||0)}" data-price="${i}" class="input-field" style="padding:5px"><button type="button" data-remove="${i}" class="btn btn-danger" style="padding:4px">×</button></div>`).join('')||'<div style="color:#aaa;font-size:12px">لم تتم إضافة أصناف بعد</div>';
+    host.querySelectorAll('[data-qty]').forEach(el=>el.onchange=()=>{pickerDraft[Number(el.dataset.qty)].qty=Math.max(1,Number(el.value)||1);});
+    host.querySelectorAll('[data-price]').forEach(el=>el.onchange=()=>{pickerDraft[Number(el.dataset.price)].price=Math.max(0,Number(el.value)||0);});
+  }
 
   function renderCartFull() {
     const list = document.getElementById('cartItemsListFull');
@@ -1068,32 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lines = (s.cart || []).map(c => `${c.name || c.itemName || c.itemId || c.id || 'صنف'} × ${c.qty || 1} — ${formatMoney(c.price || 0)}`).join('\n');
     alert(`فاتورة ${s.id}\nالعميل/الغرفة/الطاولة: ${s.customer || ''}\nالتاريخ: ${s.date || ''}\nطريقة الدفع: ${s.paymentMethod || ''}\nالكاشير: ${s.cashier || ''}\n${lines}\nالإجمالي الأصلي: ${formatMoney(s.originalTotal ?? s.total)}\nالصافي الحالي: ${formatMoney(s.netTotal ?? s.total)}\n${s.cancelled?'ملغاة':''}`);
   };
-  window.editSaleItems = function(id) {
-    const s = getSaleById(id); if (!s || s.cancelled) return;
-    const currentCart = (s.cart || []).map(c => ({
-      itemId: c.itemId || c.id || '', name: c.name || c.itemName || '',
-      qty: Number(c.qty || 1), price: Number(c.price || 0),
-      size: c.size || 'كبير', sugar: c.sugar || 'عادي', ice: c.ice || 'وسط', note: c.note || ''
-    }));
-    const template = JSON.stringify(currentCart, null, 2);
-    const raw = prompt('تعديل أصناف الفاتورة. عدّل القائمة بصيغة JSON، ويمكنك إضافة أو حذف صنف أو تغيير الكمية والسعر.\nالحقول: itemId, name, qty, price, size, sugar, ice, note', template);
-    if (raw === null) return;
-    let next;
-    try { next = JSON.parse(raw); } catch (e) { alert('صيغة JSON غير صحيحة. لم يتم تعديل الفاتورة.'); return; }
-    if (!Array.isArray(next) || !next.length) { alert('يجب أن تحتوي الفاتورة على صنف واحد على الأقل. استخدم الإلغاء إذا أردت إلغاء الفاتورة بالكامل.'); return; }
-    const valid = next.every(c => c && Number(c.qty) > 0 && Number(c.price) >= 0 && (c.name || c.itemId));
-    if (!valid) { alert('تأكد من وجود اسم أو معرف لكل صنف، وكمية أكبر من صفر، وسعر غير سالب.'); return; }
-    const newTotal = next.reduce((sum,c) => sum + Number(c.qty) * Number(c.price), 0);
-    const reason = prompt('سبب تعديل الفاتورة:');
-    if (!reason || !reason.trim()) { alert('يجب تسجيل سبب التعديل. لم يتم الحفظ.'); return; }
-    if (!s.originalSnapshot) s.originalSnapshot = JSON.parse(JSON.stringify(s));
-    const previousTotal = Number(s.netTotal !== undefined ? s.netTotal : s.total || 0);
-    s.adjustments = Array.isArray(s.adjustments) ? s.adjustments : [];
-    s.adjustments.push({type:'items_edited', reason:reason.trim(), previousCart:JSON.parse(JSON.stringify(s.cart || [])), previousNetTotal:previousTotal, newCart:JSON.parse(JSON.stringify(next)), newTotal, at:new Date().toISOString()});
-    s.cart = next; s.total = newTotal; s.netTotal = newTotal;
-    persistState(); renderReports(); renderSalesHistory();
-    alert('تم تعديل أصناف الفاتورة وإعادة حساب الإجمالي مع حفظ النسخة الأصلية وسجل التعديل.');
-  };
+  window.editSaleItems = function(id) { const s=getSaleById(id); if(!s||s.cancelled)return; openMenuItemPicker('sale',id); };
 
   window.adjustSale = function(id) {
     const s = getSaleById(id); if (!s || s.cancelled) return;
@@ -1135,7 +1183,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const mode = document.querySelector('input[name="reportCurrencyMode"]:checked')?.value || localStorage.getItem('fp_report_currency_mode') || 'convert';
     const rateInput = document.getElementById('exchangeRateInput');
-    const exchangeRate = Math.max(0.01, Number(rateInput.value) || 55);
+    const exchangeRate = Math.max(0, Number(rateInput.value) || 0);
+    const usdRateInput = document.getElementById('usdExchangeRateInput');
+    const usdExchangeRate = Math.max(0, Number(usdRateInput.value) || 0);
+    localStorage.setItem('fp_report_usd_rate', String(usdExchangeRate));
     localStorage.setItem('fp_report_currency_mode', mode);
     localStorage.setItem('fp_report_eur_rate', String(exchangeRate));
 
@@ -1160,15 +1211,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const totalsFor = sales => sales.reduce((acc, sale) => {
-      const currency = String(sale.currency || 'EGP').toUpperCase();
-      const key = ['EGP', 'EUR', 'USD'].includes(currency) ? currency : 'EGP';
-      acc[key] += Number(sale.netTotal !== undefined ? sale.netTotal : sale.total || 0);
+      const currency = ['EUR','USD'].includes(String(sale.currency||'EGP').toUpperCase()) ? String(sale.currency).toUpperCase() : 'EGP';
+      acc[currency] += Number(sale.netTotal !== undefined ? sale.netTotal : sale.total || 0);
       return acc;
     }, { EGP: 0, EUR: 0, USD: 0 });
-    const usdToEgpRate = exchangeRate / 1.1;
     const money = (amount, currency) => `${Number(amount || 0).toFixed(2)} ${currency}`;
     const displaySales = totals => mode === 'convert'
-      ? money(totals.EGP + totals.EUR * exchangeRate + totals.USD * usdToEgpRate, 'EGP')
+      ? (totals.USD && !usdExchangeRate ? 'أدخل سعر صرف الدولار' : money(totals.EGP + totals.EUR * exchangeRate + totals.USD * usdExchangeRate, 'EGP'))
       : [totals.EGP ? money(totals.EGP, 'EGP') : '', totals.EUR ? money(totals.EUR, 'EUR') : '', totals.USD ? money(totals.USD, 'USD') : ''].filter(Boolean).join(' + ') || '0.00 EGP';
 
     let sumCustody = 0, sumExpenses = 0, totalOrders = 0;
@@ -1188,9 +1237,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }).join('');
 
     const totalSalesDisplay = displaySales(sumSalesByCurrency);
-    const netDrawerEGP = sumCustody + sumSalesByCurrency.EGP + (mode === 'convert' ? sumSalesByCurrency.EUR * exchangeRate + sumSalesByCurrency.USD * usdToEgpRate : 0) - sumExpenses;
+    const netDrawerEGP = sumCustody + sumSalesByCurrency.EGP + (mode === 'convert' ? sumSalesByCurrency.EUR * exchangeRate + sumSalesByCurrency.USD * usdExchangeRate : 0) - sumExpenses;
     const netDrawerDisplay = mode === 'convert'
-      ? money(netDrawerEGP, 'EGP')
+      ? (sumSalesByCurrency.USD && !usdExchangeRate ? 'أدخل سعر صرف الدولار' : money(netDrawerEGP, 'EGP'))
       : `${money(sumCustody + sumSalesByCurrency.EGP - sumExpenses, 'EGP')}${sumSalesByCurrency.EUR ? ' | مبيعات ' + money(sumSalesByCurrency.EUR, 'EUR') : ''}${sumSalesByCurrency.USD ? ' | مبيعات ' + money(sumSalesByCurrency.USD, 'USD') : ''}`;
 
     document.getElementById('dailyBreakdownFoot').innerHTML = `<tr style="background:rgba(212,175,55,0.16); font-weight:900;"><td>الإجمالي</td><td>${totalOrders}</td><td>${sumCustody.toFixed(2)} EGP</td><td style="color:var(--danger);">${sumExpenses.toFixed(2)} EGP</td><td style="color:var(--gold-main);">${totalSalesDisplay}</td></tr>`;
@@ -1270,7 +1319,7 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('fp_company_settings_v1',JSON.stringify(companySettings));applyReminderSchedule();alert('تم حفظ بيانات الشركة وإعدادات التذكير');
   });
   document.getElementById('exportBackupBtn').addEventListener('click',()=>{
-    const keys=['fp_items_v3','fp_sales_v3','fp_held_v3','fp_custody_v3','fp_expenses_v3','fp_lang','fp_currency','fp_custom_sound','fp_report_currency_mode','fp_report_eur_rate','fp_company_settings_v1'];
+    const keys=['fp_items_v3','fp_sales_v3','fp_held_v3','fp_custody_v3','fp_expenses_v3','fp_lang','fp_currency','fp_custom_sound','fp_report_currency_mode','fp_report_eur_rate','fp_report_usd_rate','fp_company_settings_v1'];
     const data={app:'FRESHLY_POS_BACKUP',version:1,createdAt:new Date().toISOString(),data:{}};keys.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)data.data[k]=v;});data.data.fp_items_v3=JSON.stringify(state.items);
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='FRESHLY_POS_BACKUP_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url);
   });
@@ -1289,6 +1338,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (savedExchangeRate && Number(savedExchangeRate) > 0) document.getElementById('exchangeRateInput').value = savedExchangeRate;
   document.querySelectorAll('input[name="reportCurrencyMode"]').forEach(el => el.addEventListener('change', renderReports));
   document.getElementById('exchangeRateInput').addEventListener('input', renderReports);
+  document.getElementById('usdExchangeRateInput').value = localStorage.getItem('fp_report_usd_rate') || '';
+  document.getElementById('usdExchangeRateInput').addEventListener('input', renderReports);
   document.getElementById('reportPeriodSelect').addEventListener('change', renderReports);
   document.getElementById('customStartDate').addEventListener('change', renderReports);
   document.getElementById('customEndDate').addEventListener('change', renderReports);

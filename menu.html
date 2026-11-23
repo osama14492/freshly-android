@@ -199,31 +199,6 @@
   }
   .input-field:focus { border-color: var(--gold-main); }
 
-  .order-details-grid {
-    display: grid;
-    grid-template-columns: 1fr 1.15fr;
-    gap: 6px;
-    margin-bottom: 5px;
-    align-items: end;
-  }
-  .order-detail-field { min-width: 0; }
-  .order-detail-field label {
-    display: block;
-    color: var(--gold-light);
-    font-size: 0.62rem;
-    font-weight: 800;
-    margin: 0 2px 3px;
-    text-align: start;
-  }
-  .order-notes-input {
-    min-height: 31px;
-    max-height: 54px;
-    resize: vertical;
-    border: 1px solid var(--border-gold);
-    background: rgba(212,175,55,0.06);
-    line-height: 1.35;
-  }
-
   .category-strip {
     display: flex;
     gap: 5px;
@@ -569,15 +544,8 @@
         <span style="font-size:0.72rem; font-weight:800; color:var(--gold-main);" data-i18n="cartTitle">سلة الطلبات</span>
         <span id="cartItemsCountDisplay" style="font-size:0.65rem; font-weight:800; color:var(--gold-light);">0 🥤</span>
       </div>
-      <div class="order-details-grid">
-        <div class="order-detail-field">
-          <label for="customerTableInput" data-i18n="tableFieldLabel">📍 رقم الغرفة / الطاولة</label>
-          <input type="text" id="customerTableInput" class="input-field" style="border: 1.5px solid var(--gold-main); background: rgba(212,175,55,0.08); font-weight:700;" data-i18n-placeholder="tablePlaceholder" placeholder="رقم الغرفة أو الطاولة...">
-        </div>
-        <div class="order-detail-field">
-          <label for="customerOrderNotes" data-i18n="notesFieldLabel">📝 إضافات / ملاحظات</label>
-          <textarea id="customerOrderNotes" class="input-field order-notes-input" rows="1" data-i18n-placeholder="notesPlaceholder" placeholder="بدون سكر، ثلج قليل، أي طلب خاص..."></textarea>
-        </div>
+      <div style="margin-bottom:3px;">
+        <input type="text" id="customerTableInput" class="input-field" style="border: 1.5px solid var(--gold-main); background: rgba(212,175,55,0.08); font-weight:700;" data-i18n-placeholder="tablePlaceholder" placeholder="📍 أدخل رقم الطاولة أو الغرفة أو الاسم...">
       </div>
 
       <div id="cartItemsList" class="cart-list"><div class="cart-empty">السلة فارغة — اضغط على الصنف للإضافة</div></div>
@@ -724,10 +692,7 @@ document.addEventListener('DOMContentLoaded', () => {
       searchPlaceholder: "ابحث عن مشروب أو صنف...",
       allCategories: "الكل",
       cartTitle: "سلة الطلبات",
-      tablePlaceholder: "رقم الغرفة أو الطاولة...",
-      tableFieldLabel: "📍 رقم الغرفة / الطاولة",
-      notesFieldLabel: "📝 إضافات / ملاحظات",
-      notesPlaceholder: "بدون سكر، ثلج قليل، أي طلب خاص...",
+      tablePlaceholder: "📍 أدخل رقم الطاولة أو الغرفة أو الاسم...",
       grandTotalLabel: "الإجمالي النهائي:",
       sendOrderBtn: "🧾 تأكيد وعرض ملخص الطلب",
       emptyCart: "السلة فارغة — اضغط على الصنف للإضافة",
@@ -750,10 +715,7 @@ document.addEventListener('DOMContentLoaded', () => {
       searchPlaceholder: "Search drinks or items...",
       allCategories: "All",
       cartTitle: "Order Cart",
-      tablePlaceholder: "Room or table number...",
-      tableFieldLabel: "📍 Room / Table",
-      notesFieldLabel: "📝 Add-ons / Notes",
-      notesPlaceholder: "No sugar, less ice, special request...",
+      tablePlaceholder: "📍 Enter table #, room #, or your name...",
       grandTotalLabel: "Grand Total:",
       sendOrderBtn: "🧾 Confirm & View Order Summary",
       emptyCart: "Cart is empty — tap any item to add",
@@ -1021,7 +983,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const customerInput = document.getElementById('customerTableInput');
     const customer = customerInput.value.trim();
-    const orderNotes = document.getElementById('customerOrderNotes').value.trim();
     if (!customer) {
       alert(t('alertNoTable'));
       customerInput.focus();
@@ -1044,14 +1005,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (typeof sendOrderToCloudFirebase === 'function') {
-      sendOrderToCloudFirebase(customer, cartItemsData, subtotal, orderNotes);
+      sendOrderToCloudFirebase(customer, cartItemsData, subtotal);
     }
 
     const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     menuState.lastOrderText = [
       `🍹 *New Order - FRESHLY & PREMIER*`,
       `📍 *Table / Room / Customer:* ${customer}`,
-      ...(orderNotes ? [`📝 *Add-ons / Notes:* ${orderNotes}`] : []),
       `🕒 *Time:* ${timeStr}`,
       `--------------------------`,
       ...textLines,
@@ -1062,7 +1022,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('receiptContent').innerHTML = `
       <div style="text-align:center; font-weight:900; font-size:0.82rem; border-bottom:2px solid #111; padding-bottom:3px; margin-bottom:4px;">FRESHLY &amp; PREMIER</div>
       <div><strong>📍 Table / Customer:</strong> ${customer}</div>
-      ${orderNotes ? `<div style="margin:3px 0 5px; padding:4px; background:#fff8df; border:1px solid #d4af37; border-radius:5px;"><strong>📝 Add-ons / Notes:</strong> ${orderNotes}</div>` : ''}
       <div style="margin-bottom:4px;"><strong>🕒 Time:</strong> ${timeStr}</div>
       ${htmlLines.join('')}
       <div style="display:flex; justify-content:space-between; font-weight:900; font-size:0.85rem; margin-top:5px; padding-top:4px; border-top:2px solid #111;">
@@ -1092,7 +1051,6 @@ document.addEventListener('DOMContentLoaded', () => {
   window.finishAndClearCart = function() {
     menuState.cart = [];
     document.getElementById('customerTableInput').value = '';
-    document.getElementById('customerOrderNotes').value = '';
     renderCart();
     closeModal('orderModal');
   };
@@ -1338,12 +1296,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
   const cloudDb = firebase.database();
 
-  function sendOrderToCloudFirebase(customerName, cartItems, totalAmount, orderNotes) {
+  function sendOrderToCloudFirebase(customerName, cartItems, totalAmount) {
     const orderId = 'WEB-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7).toUpperCase();
     cloudDb.ref('pendingOrders/' + orderId).set({
       id: orderId,
       customer: customerName,
-      notes: orderNotes || '',
       cart: cartItems,
       total: totalAmount,
       time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
