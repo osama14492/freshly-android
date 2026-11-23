@@ -1444,7 +1444,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if(savedModeRadio)savedModeRadio.checked=true;
   document.getElementById('reportUsdRate').value=localStorage.getItem('fp_report_usd_rate')||'';
   document.getElementById('reportEurRate').value=localStorage.getItem('fp_report_eur_rate')||'';
-  document.getElementById('reportGbpRate').value=localStorage.getItem('fp_report_gbp_rate')||'');
+  document.getElementById('reportGbpRate').value=localStorage.getItem('fp_report_gbp_rate')||'';
   document.querySelectorAll('input[name="reportCurrencyMode"]').forEach(el=>el.addEventListener('change',()=>{localStorage.setItem('fp_report_currency_mode',el.value);renderReports();}));
   [['reportUsdRate','fp_report_usd_rate'],['reportEurRate','fp_report_eur_rate'],['reportGbpRate','fp_report_gbp_rate']].forEach(([id,key])=>document.getElementById(id).addEventListener('input',e=>{localStorage.setItem(key,e.target.value);renderReports();}));
   document.getElementById('reportPeriodSelect').addEventListener('change', renderReports);
