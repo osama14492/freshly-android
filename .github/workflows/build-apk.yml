@@ -197,6 +197,10 @@ jobs:
           print("Permanent signing configuration installed.")
           PY
       - name: Build debug APK
+        env:
+          FRESHLY_KEYSTORE_PASSWORD: ${{ secrets.FRESHLY_KEYSTORE_PASSWORD }}
+          FRESHLY_KEY_ALIAS: ${{ secrets.FRESHLY_KEY_ALIAS }}
+          FRESHLY_KEY_PASSWORD: ${{ secrets.FRESHLY_KEY_PASSWORD }}
         run: gradle assembleDebug --stacktrace --info
       - name: Prepare complete delivery package
         run: |
