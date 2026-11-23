@@ -193,7 +193,7 @@ jobs:
               }
           }
           """
-          p.write_text(s + "\\n" + block)
+          p.write_text(s + "\n" + block)
           print("Permanent signing configuration installed.")
           PY
       - name: Build debug APK
