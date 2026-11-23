@@ -90,7 +90,7 @@ class MainActivity : FragmentActivity() {
     private inner class BackupBridge {
         @JavascriptInterface
         fun saveBackup(json: String, requestedName: String): String {
-            if (webView.url?.host != "appassets.androidplatform.net") return "ERROR"
+            if (Uri.parse(webView.url).host != "appassets.androidplatform.net") return "ERROR"
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return "UNSUPPORTED"
             val safeName = requestedName.replace(Regex("[^A-Za-z0-9._-]"), "_")
                 .ifBlank { "FRESHLY_POS_BACKUP.json" }
