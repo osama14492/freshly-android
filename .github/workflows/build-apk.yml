@@ -156,6 +156,46 @@ jobs:
         with:
           gradle-version: '8.7'
           dependency-graph: disabled
+      - name: Configure permanent FRESHLY signing key
+        env:
+          FRESHLY_KEYSTORE_BASE64: ${{ secrets.FRESHLY_KEYSTORE_BASE64 }}
+          FRESHLY_KEYSTORE_PASSWORD: ${{ secrets.FRESHLY_KEYSTORE_PASSWORD }}
+          FRESHLY_KEY_ALIAS: ${{ secrets.FRESHLY_KEY_ALIAS }}
+          FRESHLY_KEY_PASSWORD: ${{ secrets.FRESHLY_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FRESHLY_KEYSTORE_BASE64" || { echo "Missing GitHub secret: FRESHLY_KEYSTORE_BASE64"; exit 1; }
+          test -n "$FRESHLY_KEYSTORE_PASSWORD" || { echo "Missing GitHub secret: FRESHLY_KEYSTORE_PASSWORD"; exit 1; }
+          test -n "$FRESHLY_KEY_ALIAS" || { echo "Missing GitHub secret: FRESHLY_KEY_ALIAS"; exit 1; }
+          test -n "$FRESHLY_KEY_PASSWORD" || { echo "Missing GitHub secret: FRESHLY_KEY_PASSWORD"; exit 1; }
+          echo "$FRESHLY_KEYSTORE_BASE64" | base64 --decode > freshly-upload-key.jks
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle")
+          s = p.read_text()
+          if "FRESHLY_PERMANENT_SIGNING" in s:
+              raise SystemExit("Permanent signing config already exists; refusing to duplicate it.")
+          block = """
+          // FRESHLY_PERMANENT_SIGNING
+          android {
+              signingConfigs {
+                  freshlyPermanent {
+                      storeFile rootProject.file("freshly-upload-key.jks")
+                      storePassword System.getenv("FRESHLY_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("FRESHLY_KEY_ALIAS")
+                      keyPassword System.getenv("FRESHLY_KEY_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.freshlyPermanent
+                  }
+              }
+          }
+          """
+          p.write_text(s + "\\n" + block)
+          print("Permanent signing configuration installed.")
+          PY
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace --info
       - name: Prepare complete delivery package
