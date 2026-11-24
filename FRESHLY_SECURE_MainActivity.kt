@@ -20,6 +20,7 @@ import android.os.Looper
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.Settings
 import android.text.InputType
 import android.webkit.WebChromeClient
 import android.webkit.JavascriptInterface
@@ -50,6 +51,9 @@ class MainActivity : FragmentActivity() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var activePrintJob: PrintJob? = null
     private var printMonitor: Runnable? = null
+    private var notificationPermissionCheckedThisLaunch = false
+    private val notificationPermissionRequestCode = 7101
+    private val notificationChannelId = "freshly_orders"
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -126,21 +130,21 @@ class MainActivity : FragmentActivity() {
         }
         @JavascriptInterface
         fun requestNotificationPermission() {
-            runOnUiThread {
-                if (Build.VERSION.SDK_INT >= 33 &&
-                    checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7101)
-                }
-            }
+            runOnUiThread { requestNotificationPermissionIfNeeded() }
         }
+
+        @JavascriptInterface
+        fun openNotificationSettings() {
+            runOnUiThread { openNotificationSettingsScreen() }
+        }
+
+        @JavascriptInterface
+        fun areNotificationsEnabled(): Boolean = areFreshlyNotificationsEnabled()
 
         @JavascriptInterface
         fun showNotification(title: String, body: String, notificationTag: String) {
             runOnUiThread {
-                if (Build.VERSION.SDK_INT >= 33 &&
-                    checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                    return@runOnUiThread
-                }
+                if (!areFreshlyNotificationsEnabled()) return@runOnUiThread
                 val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
                 val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
                 val flags = PendingIntent.FLAG_UPDATE_CURRENT or
@@ -149,7 +153,7 @@ class MainActivity : FragmentActivity() {
                     PendingIntent.getActivity(this@MainActivity, 7102, it, flags)
                 }
                 val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    Notification.Builder(this@MainActivity, "freshly_orders")
+                    Notification.Builder(this@MainActivity, notificationChannelId)
                 } else {
                     Notification.Builder(this@MainActivity)
                 }
@@ -209,16 +213,113 @@ class MainActivity : FragmentActivity() {
 
     }
 
+    private fun areFreshlyNotificationsEnabled(): Boolean {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            return false
+        }
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        if (!manager.areNotificationsEnabled()) return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = manager.getNotificationChannel(notificationChannelId) ?: return false
+            if (channel.importance == NotificationManager.IMPORTANCE_NONE) return false
+        }
+        return true
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (notificationPermissionCheckedThisLaunch) return
+        notificationPermissionCheckedThisLaunch = true
+
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            val alreadyPrompted = prefs.getBoolean("notification_permission_prompted", false)
+            if (!alreadyPrompted) {
+                prefs.edit().putBoolean("notification_permission_prompted", true).apply()
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), notificationPermissionRequestCode)
+            } else if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+                AlertDialog.Builder(this)
+                    .setTitle("السماح بإشعارات FRESHLY")
+                    .setMessage("الإشعارات ضرورية لتنبيهك بالطلبات الجديدة والتنبيهات المهمة من التطبيق.")
+                    .setPositiveButton("السماح") { _, _ ->
+                        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), notificationPermissionRequestCode)
+                    }
+                    .setNegativeButton("لاحقًا", null)
+                    .setNeutralButton("إعدادات التطبيق") { _, _ -> openNotificationSettingsScreen() }
+                    .show()
+            } else {
+                showNotificationSettingsDialog()
+            }
+            return
+        }
+
+        if (!areFreshlyNotificationsEnabled()) showNotificationSettingsDialog()
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == notificationPermissionRequestCode) {
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "تم السماح بإشعارات FRESHLY", Toast.LENGTH_SHORT).show()
+            } else {
+                showNotificationSettingsDialog()
+            }
+        }
+    }
+
+    private fun showNotificationSettingsDialog() {
+        if (isFinishing || isDestroyed) return
+        AlertDialog.Builder(this)
+            .setTitle("إشعارات FRESHLY غير مفعّلة")
+            .setMessage("لتصلك تنبيهات الطلبات، افتح إعدادات إشعارات التطبيق وفعّل السماح بالإشعارات وقناة إشعارات FRESHLY.")
+            .setPositiveButton("فتح إعدادات الإشعارات") { _, _ -> openNotificationSettingsScreen() }
+            .setNegativeButton("لاحقًا", null)
+            .show()
+    }
+
+    private fun openNotificationSettingsScreen() {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                putExtra(Settings.EXTRA_CHANNEL_ID, notificationChannelId)
+            }
+        } else {
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+        }
+        try {
+            startActivity(intent)
+        } catch (_: Exception) {
+            val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            try {
+                startActivity(fallback)
+            } catch (_: Exception) {
+                Toast.makeText(this, "افتح إعدادات الهاتف ثم التطبيقات ثم FRESHLY ثم الإشعارات", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun createFreshlyNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 "freshly_orders",
-                "إشعارات طلبات FRESHLY",
+                "إشعارات FRESHLY",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "تنبيهات الطلبات الجديدة الواردة من المنيو"
+                description = "تنبيهات الطلبات الجديدة والتحديثات المهمة من تطبيق FRESHLY"
                 enableVibration(true)
+                vibrationPattern = longArrayOf(0, 250, 150, 250)
                 enableLights(true)
+                lightColor = android.graphics.Color.rgb(212, 175, 55)
+                setShowBadge(true)
             }
             val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
@@ -227,6 +328,7 @@ class MainActivity : FragmentActivity() {
 
     private fun openHome() {
         webView.loadUrl("https://appassets.androidplatform.net/assets/home.html")
+        requestNotificationPermissionIfNeeded()
     }
 
     private fun showPasswordSetup(onDone: () -> Unit) {
