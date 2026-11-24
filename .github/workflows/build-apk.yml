@@ -121,6 +121,35 @@ jobs:
           echo '--- packaged web assets ---'
           ls -lah app/src/main/assets
           ls -lah app/src/main/assets/images
+      - name: Bundle Firebase compat SDKs locally for Android WebView
+        run: |
+          set -euo pipefail
+          cd app/src/main/assets
+          curl --fail --location --retry 3 --retry-all-errors https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js -o firebase-app-compat.js
+          curl --fail --location --retry 3 --retry-all-errors https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js -o firebase-auth-compat.js
+          curl --fail --location --retry 3 --retry-all-errors https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js -o firebase-database-compat.js
+          cd -
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/assets/cashier.html")
+          s = p.read_text()
+          replacements = {
+              "https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js": "firebase-app-compat.js",
+              "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js": "firebase-auth-compat.js",
+              "https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js": "firebase-database-compat.js",
+              "const base = 'https://www.gstatic.com/firebasejs/9.22.0/';": "const base = './';"
+          }
+          for old, new in replacements.items():
+              if old not in s:
+                  raise SystemExit("Expected Firebase reference not found: " + old)
+              s = s.replace(old, new)
+          p.write_text(s)
+          for name in ("firebase-app-compat.js", "firebase-auth-compat.js", "firebase-database-compat.js"):
+              path = Path("app/src/main/assets") / name
+              if not path.is_file() or path.stat().st_size < 10000:
+                  raise SystemExit("Firebase SDK asset missing or unexpectedly small: " + name)
+          print("Bundled Firebase App/Auth/Database compat SDKs into the APK assets.")
+          PY
       - name: Validate cashier JavaScript syntax
         run: |
           python3 - <<'PY'
