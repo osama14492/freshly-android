@@ -1,5 +1,11 @@
 package com.freshly.premier
 
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.pm.PackageManager
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
@@ -54,6 +60,7 @@ class MainActivity : FragmentActivity() {
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this)).build()
         webView = WebView(this)
         setContentView(webView)
+        createFreshlyNotificationChannel()
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.settings.databaseEnabled = true
@@ -118,6 +125,47 @@ class MainActivity : FragmentActivity() {
             }
         }
         @JavascriptInterface
+        fun requestNotificationPermission() {
+            runOnUiThread {
+                if (Build.VERSION.SDK_INT >= 33 &&
+                    checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7101)
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun showNotification(title: String, body: String, notificationTag: String) {
+            runOnUiThread {
+                if (Build.VERSION.SDK_INT >= 33 &&
+                    checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    return@runOnUiThread
+                }
+                val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+                val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                    (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+                val pendingIntent = launchIntent?.let {
+                    PendingIntent.getActivity(this@MainActivity, 7102, it, flags)
+                }
+                val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    Notification.Builder(this@MainActivity, "freshly_orders")
+                } else {
+                    Notification.Builder(this@MainActivity)
+                }
+                builder.setSmallIcon(R.mipmap.ic_launcher)
+                    .setContentTitle(title.take(80))
+                    .setContentText(body.take(180))
+                    .setStyle(Notification.BigTextStyle().bigText(body.take(500)))
+                    .setAutoCancel(true)
+                    .setPriority(Notification.PRIORITY_HIGH)
+                    .setDefaults(Notification.DEFAULT_ALL)
+                if (pendingIntent != null) builder.setContentIntent(pendingIntent)
+                manager.notify(notificationTag.hashCode(), builder.build())
+            }
+        }
+
+        @JavascriptInterface
         fun printReport(requestedTitle: String) {
             runOnUiThread {
                 try {
@@ -159,6 +207,22 @@ class MainActivity : FragmentActivity() {
             }
         }
 
+    }
+
+    private fun createFreshlyNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "freshly_orders",
+                "إشعارات طلبات FRESHLY",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "تنبيهات الطلبات الجديدة الواردة من المنيو"
+                enableVibration(true)
+                enableLights(true)
+            }
+            val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
     }
 
     private fun openHome() {
