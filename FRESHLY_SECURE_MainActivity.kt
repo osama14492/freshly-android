@@ -98,8 +98,11 @@ class MainActivity : FragmentActivity() {
         }
         if (!prefs.contains("password_hash")) {
             showPasswordSetup { hasOpenedHome = true; openHome() }
-        } else {
+        } else if (prefs.getBoolean("password_enabled", true)) {
             authenticateForEntry { hasOpenedHome = true; openHome() }
+        } else {
+            hasOpenedHome = true
+            openHome()
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() { if (webView.canGoBack()) webView.goBack() else finish() }
@@ -128,6 +131,20 @@ class MainActivity : FragmentActivity() {
                 "ERROR"
             }
         }
+        @JavascriptInterface
+        fun getPasswordEnabled(): Boolean {
+            if (Uri.parse(webView.url ?: "").host != "appassets.androidplatform.net") return true
+            return prefs.getBoolean("password_enabled", true)
+        }
+
+        @JavascriptInterface
+        fun setPasswordEnabled(enabled: Boolean): Boolean {
+            if (Uri.parse(webView.url ?: "").host != "appassets.androidplatform.net") return false
+            if (!prefs.contains("password_hash")) return false
+            prefs.edit().putBoolean("password_enabled", enabled).apply()
+            return prefs.getBoolean("password_enabled", true) == enabled
+        }
+
         @JavascriptInterface
         fun requestNotificationPermission() {
             runOnUiThread { requestNotificationPermissionIfNeeded() }
@@ -363,7 +380,8 @@ class MainActivity : FragmentActivity() {
     private fun savePassword(password: String) {
         val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
         prefs.edit().putString("password_salt", Base64.encodeToString(salt, Base64.NO_WRAP))
-            .putString("password_hash", hashPassword(password, salt)).apply()
+            .putString("password_hash", hashPassword(password, salt))
+            .putBoolean("password_enabled", true).apply()
     }
 
     private fun hashPassword(password: String, salt: ByteArray): String {

@@ -201,6 +201,10 @@
       <input id="freshlyLoginEmail" type="email" autocomplete="username" required>
       <label for="freshlyLoginPassword">كلمة المرور</label>
       <input id="freshlyLoginPassword" type="password" autocomplete="current-password" required>
+      <label style="display:flex;align-items:center;gap:8px;margin:12px 0 0;color:#fcf6ba;font-size:.82rem;">
+        <input id="freshlyRememberLogin" type="checkbox" style="width:18px;height:18px;accent-color:#d4af37;">
+        تذكرني على هذا الجهاز
+      </label>
       <button id="freshlyLoginSubmit" type="submit">تسجيل الدخول</button>
       <div id="freshlyLoginMessage" role="alert"></div>
     </form>
@@ -473,6 +477,14 @@
       <!-- 4. SETTINGS VIEW -->
       <section id="view-settings" class="view-section">
         <h3 style="font-size:0.92rem; color:var(--gold-main); margin-bottom:6px;">إعدادات النظام والشركة</h3>
+        <div class="panel-box" id="freshlySecuritySettings" style="display:flex;flex-direction:column;gap:8px;">
+          <h4 style="font-size:.78rem;color:var(--gold-light);">🔐 حماية التطبيق</h4>
+          <label style="display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--text-main);">
+            <input type="checkbox" id="passwordProtectionEnabled" style="width:18px;height:18px;accent-color:var(--gold-main);">
+            تشغيل الرقم السري عند فتح التطبيق
+          </label>
+          <div id="passwordProtectionStatus" style="font-size:.68rem;color:var(--text-muted);">يتم تطبيق الاختيار عند فتح التطبيق مرة أخرى.</div>
+        </div>
         <div class="panel-box" style="display:flex; flex-direction:column; gap:8px;">
           <div>
             <label style="font-size:0.68rem; color:var(--text-muted);">اسم المشروع / الشركة</label>
@@ -610,6 +622,12 @@
   // ربط زر الدخول مبكراً حتى لا يبقى بلا استجابة إذا تأخر تحميل Firebase.
   const gateForm = document.getElementById('freshlyLoginForm');
   const gateMessage = document.getElementById('freshlyLoginMessage');
+  const rememberLogin = document.getElementById('freshlyRememberLogin');
+  const rememberedLoginEmail = localStorage.getItem('fp_remembered_login_email') || '';
+  if (rememberedLoginEmail) {
+    document.getElementById('freshlyLoginEmail').value = rememberedLoginEmail;
+    if (rememberLogin) rememberLogin.checked = true;
+  }
   gateForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const submit = document.getElementById('freshlyLoginSubmit');
@@ -618,8 +636,16 @@
     gateMessage.textContent = '';
     try {
       await ensureFirebaseReady();
+      const loginEmail = document.getElementById('freshlyLoginEmail').value.trim();
+      await firebase.auth().setPersistence(
+        rememberLogin?.checked
+          ? firebase.auth.Auth.Persistence.LOCAL
+          : firebase.auth.Auth.Persistence.SESSION
+      );
+      if (rememberLogin?.checked) localStorage.setItem('fp_remembered_login_email', loginEmail);
+      else localStorage.removeItem('fp_remembered_login_email');
       await firebase.auth().signInWithEmailAndPassword(
-        document.getElementById('freshlyLoginEmail').value.trim(),
+        loginEmail,
         document.getElementById('freshlyLoginPassword').value
       );
       try { window.FRESHLYNative?.requestNotificationPermission?.(); } catch (notificationError) {
@@ -1643,11 +1669,11 @@
     const monthNet=netFor(monthSales,monthExpenses),monthDrawer={...monthNet};
     currencies.forEach(c=>monthDrawer[c]+=monthCustody[c]);
     document.getElementById('dailyBreakdownFoot').innerHTML=`<tr style="font-weight:900"><td>إجمالي الشهر حتى اليوم</td><td>${monthOrders}</td><td>${display(monthSales)}</td><td>${display(monthExpenses)}</td><td>${display(monthNet)}</td><td>${display(monthCustody)}</td></tr>`;
-    document.getElementById('statTotalSalesVal').textContent=display(monthSales);
-    document.getElementById('statExpensesVal').textContent=display(monthExpenses);
-    document.getElementById('statNetRevenueVal').textContent=display(monthNet);
-    document.getElementById('statCustodyVal').textContent=display(monthCustody);
-    document.getElementById('statNetDrawerVal').textContent=display(monthDrawer);
+    document.getElementById('statTotalSalesVal').innerHTML=display(monthSales);
+    document.getElementById('statExpensesVal').innerHTML=display(monthExpenses);
+    document.getElementById('statNetRevenueVal').innerHTML=display(monthNet);
+    document.getElementById('statCustodyVal').innerHTML=display(monthCustody);
+    document.getElementById('statNetDrawerVal').innerHTML=display(monthDrawer);
     const rangeLabel=period==='custom'?`${dates[dates.length-1]||'البداية'} إلى ${dates[0]||'النهاية'}`:period==='today'?today:dates.length?`${dates[dates.length-1]} إلى ${dates[0]}`:'كل الأيام';
     window.__freshlyReportRangeLabel=rangeLabel;
     window.__freshlyCurrentReportText=['تقرير FRESHLY & PREMIER',`فترة التفاصيل: ${rangeLabel}`,`إجمالي الشهر من ${monthStart} حتى ${today}:`,`عدد الفواتير: ${monthOrders}`,`الإيرادات: ${displayText(monthSales)}`,`المصروفات: ${displayText(monthExpenses)}`,`صافي الإيرادات: ${displayText(monthNet)}`,`العهدة: ${displayText(monthCustody)}`,`رصيد الخزينة التقديري: ${displayText(monthDrawer)}`,'','التفصيل اليومي:',...dates.map(d=>{const sales=state.sales.filter(x=>String(x.date||'').slice(0,10)===d&&!x.cancelled),st=totalsFor(sales),ex=expensesFor((state.expensesByDate||{})[d]||[]),ct=blank(),c=String((state.custodyCurrencyByDate||{})[d]||'EGP');ct[c in ct?c:'EGP']=Number((state.custodyByDate||{})[d]||0);return `${d}: فواتير ${sales.length} | إيرادات ${displayText(st)} | مصروفات ${displayText(ex)} | عهدة ${displayText(ct)} | صافي ${displayText(netFor(st,ex))}`;})].join('\n');
@@ -1761,6 +1787,44 @@
     const text = window.__freshlyCurrentReportText || 'تقرير FRESHLY';
     window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
   });
+
+  // إعدادات حماية التطبيق (تعمل داخل نسخة Android).
+  const passwordProtectionToggle = document.getElementById('passwordProtectionEnabled');
+  const passwordProtectionStatus = document.getElementById('passwordProtectionStatus');
+  function syncPasswordProtectionSetting() {
+    if (!passwordProtectionToggle) return;
+    try {
+      if (window.FRESHLYNative && typeof window.FRESHLYNative.getPasswordEnabled === 'function') {
+        passwordProtectionToggle.checked = !!window.FRESHLYNative.getPasswordEnabled();
+      } else {
+        passwordProtectionToggle.checked = localStorage.getItem('fp_password_protection_enabled') !== 'false';
+      }
+    } catch (error) {
+      passwordProtectionToggle.checked = true;
+      if (passwordProtectionStatus) passwordProtectionStatus.textContent = 'تعذر قراءة إعداد الحماية.';
+    }
+  }
+  passwordProtectionToggle?.addEventListener('change', () => {
+    const enabled = passwordProtectionToggle.checked;
+    if (!enabled && !confirm('هل تريد إيقاف الرقم السري عند فتح التطبيق؟ سيظل بإمكانك تشغيله مرة أخرى من الإعدادات.')) {
+      passwordProtectionToggle.checked = true;
+      return;
+    }
+    try {
+      if (window.FRESHLYNative && typeof window.FRESHLYNative.setPasswordEnabled === 'function') {
+        const saved = window.FRESHLYNative.setPasswordEnabled(enabled);
+        if (!saved) throw new Error('تعذر حفظ إعداد الحماية');
+      } else {
+        localStorage.setItem('fp_password_protection_enabled', String(enabled));
+      }
+      if (passwordProtectionStatus) passwordProtectionStatus.textContent =
+        enabled ? 'الرقم السري مفعّل وسيُطلب عند فتح التطبيق.' : 'الرقم السري متوقف ولن يُطلب عند فتح التطبيق.';
+    } catch (error) {
+      passwordProtectionToggle.checked = !enabled;
+      alert(error.message || 'تعذر حفظ إعداد الحماية.');
+    }
+  });
+  syncPasswordProtectionSetting();
 
   // إعدادات الشركة والتذكير والنسخ الاحتياطي
   function applyCompanySettings(){
