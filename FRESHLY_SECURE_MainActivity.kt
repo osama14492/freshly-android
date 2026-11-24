@@ -48,6 +48,7 @@ class MainActivity : FragmentActivity() {
     private val chooserRequest = 4102
     private val prefs by lazy { getSharedPreferences("freshly_security", MODE_PRIVATE) }
     private var hasOpenedHome = false
+    @Volatile private var cashierPageActive = false
     private val mainHandler = Handler(Looper.getMainLooper())
     private var activePrintJob: PrintJob? = null
     private var printMonitor: Runnable? = null
@@ -74,6 +75,14 @@ class MainActivity : FragmentActivity() {
         webView.settings.setSupportMultipleWindows(false)
         webView.addJavascriptInterface(BackupBridge(), "FRESHLYNative")
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                cashierPageActive = isTrustedCashierUrl(url)
+            }
+            override fun onPageFinished(view: WebView, url: String?) {
+                super.onPageFinished(view, url)
+                cashierPageActive = isTrustedCashierUrl(url)
+            }
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) =
                 assetLoader.shouldInterceptRequest(request.url)
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -109,10 +118,20 @@ class MainActivity : FragmentActivity() {
         })
     }
 
+    private fun isTrustedCashierUrl(rawUrl: String?): Boolean {
+        if (rawUrl.isNullOrBlank()) return false
+        return try {
+            val uri = Uri.parse(rawUrl)
+            uri.scheme == "https" &&
+                uri.host == "appassets.androidplatform.net" &&
+                uri.path == "/assets/cashier.html"
+        } catch (_: Exception) { false }
+    }
+
     private inner class BackupBridge {
         @JavascriptInterface
         fun saveBackup(json: String, requestedName: String): String {
-            if (Uri.parse(webView.url).host != "appassets.androidplatform.net") return "ERROR"
+            if (!cashierPageActive) return "ERROR"
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return "UNSUPPORTED"
             val safeName = requestedName.replace(Regex("[^A-Za-z0-9._-]"), "_")
                 .ifBlank { "FRESHLY_POS_BACKUP.json" }
@@ -133,16 +152,16 @@ class MainActivity : FragmentActivity() {
         }
         @JavascriptInterface
         fun getPasswordEnabled(): Boolean {
-            if (Uri.parse(webView.url ?: "").host != "appassets.androidplatform.net") return true
+            if (!cashierPageActive) return true
             return prefs.getBoolean("password_enabled", true)
         }
 
         @JavascriptInterface
         fun setPasswordEnabled(enabled: Boolean): Boolean {
-            if (Uri.parse(webView.url ?: "").host != "appassets.androidplatform.net") return false
+            if (!cashierPageActive) return false
             if (!prefs.contains("password_hash")) return false
-            prefs.edit().putBoolean("password_enabled", enabled).apply()
-            return prefs.getBoolean("password_enabled", true) == enabled
+            val saved = prefs.edit().putBoolean("password_enabled", enabled).commit()
+            return saved && prefs.getBoolean("password_enabled", true) == enabled
         }
 
         @JavascriptInterface
