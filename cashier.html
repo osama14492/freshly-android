@@ -566,7 +566,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   const managerUid = 'AiQ3H3qAsRdI4HMvfDfXgQCzplj1';
   document.getElementById('freshlyLogoutBtn')?.addEventListener('click', async () => {
-    if (confirm('هل تريد تسجيل الخروج من حساب المدير؟')) await firebase.auth().signOut();
+    if (confirm('هل تريد تسجيل الخروج من حسابك؟')) await firebase.auth().signOut();
   });
   const loginForm = document.getElementById('freshlyLoginForm');
   const loginMessage = document.getElementById('freshlyLoginMessage');
@@ -595,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.classList.add('auth-locked');
       return;
     }
-    document.body.classList.remove('auth-locked');
+    // لا تفتح واجهة الكاشير هنا؛ يجب أولاً التحقق من سجل الصلاحيات في المستمع التالي.
     loginMessage.textContent = '';
   });
 
@@ -697,7 +697,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       if (!isManager) {
         document.getElementById('freshlyAccountsPanel')?.remove();
-        document.getElementById('freshlyLogoutBtn')?.addEventListener('click', () => firebase.auth().signOut());
       } else renderStaffAccounts();
       const firstAllowed = ['pos','pending','records','reports','settings'].find(tab => {
         const key = ({pos:'sales',pending:'orders'})[tab] || tab;
