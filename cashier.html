@@ -547,10 +547,22 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('fp_custom_sound', state.customAlertSound);
   }
 
-  function formatMoney(amount) {
-    const num = Number(amount || 0);
-    const clean = Number.isInteger(num) ? num.toString() : num.toFixed(2);
-    return state.currency === 'EGP' ? `${clean} EGP` : state.currency === 'USD' ? `${clean} USD` : `${clean} €`;
+  function formatAmount(amount, currency) {
+    const num=Number(amount||0);
+    const clean=Number.isInteger(num)?num.toString():num.toFixed(2);
+    const c=String(currency||state.currency||'EGP').toUpperCase();
+    return clean+' '+(c==='EUR'?'€':c);
+  }
+  function formatMoney(amount) { return formatAmount(amount,state.currency); }
+  function formatCurrencyTotals(totals) {
+    const currencies=['EGP','USD','EUR','GBP'];
+    const parts=currencies.filter(c=>Math.abs(Number((totals||{})[c]||0))>0.000001).map(c=>formatAmount(totals[c],c));
+    return parts.join(' + ')||formatAmount(0,state.currency);
+  }
+  function cartCurrencyTotals(cart) {
+    const totals={EGP:0,USD:0,EUR:0,GBP:0};
+    (cart||[]).forEach(line=>{const c=String(line.currency||state.currency||'EGP').toUpperCase();if(Object.prototype.hasOwnProperty.call(totals,c))totals[c]+=Number(line.price||0)*Number(line.qty||1);});
+    return totals;
   }
 
   function getItemTitle(item) {
