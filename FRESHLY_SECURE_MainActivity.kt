@@ -157,9 +157,9 @@ class MainActivity : FragmentActivity() {
         }
 
         @JavascriptInterface
-        fun setPasswordEnabled(enabled: Boolean): Boolean {
+        fun setPasswordEnabled(enabled: Boolean, confirmationPassword: String): Boolean {
             if (!cashierPageActive) return false
-            if (!prefs.contains("password_hash")) return false
+            if (!prefs.contains("password_hash") || !verifyPassword(confirmationPassword)) return false
             val saved = prefs.edit().putBoolean("password_enabled", enabled).commit()
             return saved && prefs.getBoolean("password_enabled", true) == enabled
         }

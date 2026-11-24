@@ -402,11 +402,29 @@
           <div style="font-size:0.62rem;color:var(--text-muted);margin-top:5px;">أسعار التحويل للعرض والحساب داخل التقرير فقط، ولا تغيّر البيانات الأصلية.</div>
         </div>
 
-        <div class="panel-box no-print">
-          <h4 style="font-size:0.82rem; color:var(--gold-light); margin-bottom:8px;">🧾 سجل الفواتير وإدارة ما بعد البيع</h4>
-          <div id="salesHistoryList" style="display:flex;flex-direction:column;gap:6px;"></div>
+        <div class="panel-box" style="flex:1; overflow-y:auto;">
+          <h4 style="font-size:0.78rem; color:var(--gold-light); margin-bottom:6px;">التقرير المالي التفصيلي حسب اليوم</h4>
+          <table class="data-table">
+            <thead>
+              <tr><th>التاريخ</th><th>عدد الفواتير</th><th>الإيرادات حسب العملة</th><th>المصروفات</th><th>الصافي بعد المصروفات</th><th>العهدة</th></tr>
+            </thead>
+            <tbody id="dailyBreakdownBody"></tbody>
+            <tfoot id="dailyBreakdownFoot"></tfoot>
+          </table>
         </div>
 
+        <div class="panel-box" style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; text-align:center;">
+          <div><div style="font-size:0.65rem;color:var(--text-muted);">إيرادات الشهر</div><div id="statTotalSalesVal" style="font-size:0.9rem;font-weight:900;color:var(--gold-main);">0 EGP</div></div>
+          <div><div style="font-size:0.65rem;color:var(--text-muted);">مصروفات الشهر</div><div id="statExpensesVal" style="font-size:0.9rem;font-weight:900;color:var(--danger);">0 EGP</div></div>
+          <div><div style="font-size:0.65rem;color:var(--text-muted);">صافي الشهر بعد المصروفات</div><div id="statNetRevenueVal" style="font-size:0.9rem;font-weight:900;color:var(--success);">0 EGP</div></div>
+          <div><div style="font-size:0.65rem;color:var(--text-muted);">عهدة الشهر</div><div id="statCustodyVal" style="font-size:0.9rem;font-weight:900;color:var(--gold-light);">0 EGP</div></div>
+          <div style="grid-column:1/-1;border-top:1px solid var(--border-subtle);padding-top:7px;"><div style="font-size:0.65rem;color:var(--text-muted);">رصيد الخزينة التقديري للشهر (العهدة + الإيرادات - المصروفات)</div><div id="statNetDrawerVal" style="font-size:0.95rem;font-weight:900;color:var(--success);">0 EGP</div></div>
+        </div>
+      </section>
+
+      <!-- Finance workspace: expenses and custody in one place -->
+      <section id="view-finance" class="view-section" style="overflow-y:auto;">
+        <h3 style="font-size:0.92rem;color:var(--gold-main);margin-bottom:4px;">💰 إدارة المصروفات والعهدة</h3>
         <div class="panel-box no-print">
           <h4 style="font-size:0.78rem; color:var(--gold-light); margin-bottom:6px;">إدارة العهدة اليومية للدرج</h4>
           <div style="display:grid; grid-template-columns:1fr 1fr 0.8fr auto; gap:6px; align-items:flex-end;">
@@ -423,6 +441,11 @@
           </div>
         </div>
 
+
+        <div class="panel-box">
+          <h4 style="font-size:.78rem;color:var(--gold-light);margin-bottom:7px;">📒 سجل العهدة</h4>
+          <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>التاريخ</th><th>المبلغ</th><th>إجراء</th></tr></thead><tbody id="custodyHistoryBody"></tbody></table></div>
+        </div>
         <div class="panel-box no-print">
           <h4 style="font-size:0.78rem; color:var(--gold-light); margin-bottom:6px;">تسجيل المصروفات اليومية</h4>
           <div style="display:grid; grid-template-columns:1fr 1fr 0.8fr 1.2fr auto; gap:5px; align-items:flex-end;">
@@ -446,31 +469,10 @@
           </div>
         </div>
 
-        <div class="panel-box" style="flex:1; overflow-y:auto;">
-          <h4 style="font-size:0.78rem; color:var(--gold-light); margin-bottom:6px;">التقرير المالي التفصيلي حسب اليوم</h4>
-          <table class="data-table">
-            <thead>
-              <tr><th>التاريخ</th><th>عدد الفواتير</th><th>الإيرادات حسب العملة</th><th>المصروفات</th><th>الصافي بعد المصروفات</th><th>العهدة</th></tr>
-            </thead>
-            <tbody id="dailyBreakdownBody"></tbody>
-            <tfoot id="dailyBreakdownFoot"></tfoot>
-          </table>
-        </div>
 
-        <div class="panel-box" style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; text-align:center;">
-          <div><div style="font-size:0.65rem;color:var(--text-muted);">إيرادات الشهر</div><div id="statTotalSalesVal" style="font-size:0.9rem;font-weight:900;color:var(--gold-main);">0 EGP</div></div>
-          <div><div style="font-size:0.65rem;color:var(--text-muted);">مصروفات الشهر</div><div id="statExpensesVal" style="font-size:0.9rem;font-weight:900;color:var(--danger);">0 EGP</div></div>
-          <div><div style="font-size:0.65rem;color:var(--text-muted);">صافي الشهر بعد المصروفات</div><div id="statNetRevenueVal" style="font-size:0.9rem;font-weight:900;color:var(--success);">0 EGP</div></div>
-          <div><div style="font-size:0.65rem;color:var(--text-muted);">عهدة الشهر</div><div id="statCustodyVal" style="font-size:0.9rem;font-weight:900;color:var(--gold-light);">0 EGP</div></div>
-          <div style="grid-column:1/-1;border-top:1px solid var(--border-subtle);padding-top:7px;"><div style="font-size:0.65rem;color:var(--text-muted);">رصيد الخزينة التقديري للشهر (العهدة + الإيرادات - المصروفات)</div><div id="statNetDrawerVal" style="font-size:0.95rem;font-weight:900;color:var(--success);">0 EGP</div></div>
-        </div>
-      </section>
-
-      <!-- Dedicated invoices, after-sales and custody workspace -->
-      <section id="view-records" class="view-section">
-        <h3 style="font-size:0.92rem;color:var(--gold-main);margin-bottom:4px;">🗂️ سجل الفواتير وإدارة ما بعد البيع والعهدة</h3>
-        <div id="recordsWorkspace" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;">
-          <div class="panel-box" style="text-align:center;color:var(--text-muted);">جارٍ تجهيز السجلات...</div>
+        <div class="panel-box">
+          <h4 style="font-size:.78rem;color:var(--gold-light);margin-bottom:7px;">📋 سجل المصروفات</h4>
+          <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>التاريخ</th><th>البيان</th><th>المبلغ</th><th>إجراء</th></tr></thead><tbody id="expenseHistoryBody"></tbody></table></div>
         </div>
       </section>
 
@@ -520,27 +522,30 @@
           <h4 style="color:var(--gold-main);margin:0;">👥 إدارة حسابات الموظفين</h4>
           <div style="font-size:.72rem;color:var(--text-muted);">إنشاء حساب مستقل لكل موظف وتحديد الصفحات المسموح بها ونوع الجهاز.</div>
           <input id="staffName" class="input-field" placeholder="اسم الموظف">
+          <input id="staffJobTitle" class="input-field" placeholder="المسمى الوظيفي (مثال: مشرف وردية)">
           <input id="staffEmail" class="input-field" type="email" placeholder="البريد الإلكتروني">
           <input id="staffPassword" class="input-field" type="password" minlength="6" placeholder="كلمة مرور مؤقتة (6 أحرف على الأقل)">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
             <select id="staffRole" class="input-field">
-              <option value="cashier">كاشير</option><option value="support">متابعة وما بعد البيع</option><option value="accountant">حسابات</option><option value="custom">صلاحيات مخصصة</option>
+              <option value="cashier">كاشير</option><option value="support">متابعة الطلبات</option><option value="accountant">حسابات</option><option value="custom">صلاحيات مخصصة</option>
             </select>
             <select id="staffDeviceMode" class="input-field">
               <option value="cashier_only">جهاز كاشير فقط</option><option value="full">جهاز شامل</option>
             </select>
           </div>
+          <div style="font-size:.7rem;color:var(--text-muted);">حدد الصفحات والعمليات التي يستطيع الموظف استخدامها:</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.75rem;">
             <label><input type="checkbox" class="staff-perm" value="sales" checked> المبيعات</label>
             <label><input type="checkbox" class="staff-perm" value="orders" checked> الطلبات</label>
-            <label><input type="checkbox" class="staff-perm" value="records"> السجلات والفواتير</label>
+            <label><input type="checkbox" class="staff-perm" value="ordersEdit" checked> تعديل الطلبات</label>
+            <label><input type="checkbox" class="staff-perm" value="ordersDelete"> حذف الطلبات</label>
             <label><input type="checkbox" class="staff-perm" value="reports"> التقارير</label>
-            <label><input type="checkbox" class="staff-perm" value="expenses"> المصروفات</label>
-            <label><input type="checkbox" class="staff-perm" value="custody"> العهدة</label>
+            <label><input type="checkbox" class="staff-perm" value="finance"> المصروفات والعهدة</label>
             <label><input type="checkbox" class="staff-perm" value="settings"> الإعدادات</label>
             <label><input type="checkbox" class="staff-perm" value="menu"> إدارة المنيو</label>
           </div>
           <button id="createStaffAccountBtn" class="btn btn-gold">➕ إنشاء حساب الموظف</button>
+          <button id="updateStaffAccountBtn" class="btn btn-dark" style="display:none">💾 حفظ تعديلات الموظف</button>
           <div id="staffAccountMessage" style="font-size:.78rem;min-height:20px;"></div>
           <div id="staffAccountsList" style="display:flex;flex-direction:column;gap:7px;"></div>
         </div>
@@ -553,7 +558,7 @@
       <button class="nav-btn active" data-tab="pos"><span class="icon">🧾</span><span>POS</span></button>
       <button class="nav-btn" data-tab="pending"><span class="icon">⏳</span><span>المعلقة</span><span id="pendingBadge" class="badge-count">0</span></button>
       <button class="nav-btn" data-tab="reports"><span class="icon">📊</span><span>التقارير</span></button>
-      <button class="nav-btn" data-tab="records"><span class="icon">🗂️</span><span>السجلات</span></button>
+      <button class="nav-btn" data-tab="finance"><span class="icon">💰</span><span>المصروفات والعهدة</span></button>
       <button class="nav-btn" data-tab="menu" onclick="window.location.href='menu.html'"><span class="icon">📱</span><span>المنيو</span></button>
       <button class="nav-btn" data-tab="settings"><span class="icon">⚙️</span><span>الإعدادات</span></button>
     </nav>
@@ -624,10 +629,9 @@
   const gateMessage = document.getElementById('freshlyLoginMessage');
   const rememberLogin = document.getElementById('freshlyRememberLogin');
   const rememberedLoginEmail = localStorage.getItem('fp_remembered_login_email') || '';
-  if (rememberedLoginEmail) {
-    document.getElementById('freshlyLoginEmail').value = rememberedLoginEmail;
-    if (rememberLogin) rememberLogin.checked = true;
-  }
+  const rememberLoginEnabled = localStorage.getItem('fp_remember_login_enabled') === 'true';
+  if (rememberedLoginEmail) document.getElementById('freshlyLoginEmail').value = rememberedLoginEmail;
+  if (rememberLogin) rememberLogin.checked = rememberLoginEnabled;
   gateForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const submit = document.getElementById('freshlyLoginSubmit');
@@ -637,17 +641,17 @@
     try {
       await ensureFirebaseReady();
       const loginEmail = document.getElementById('freshlyLoginEmail').value.trim();
+      const shouldRemember = !!rememberLogin?.checked;
       await firebase.auth().setPersistence(
-        rememberLogin?.checked
-          ? firebase.auth.Auth.Persistence.LOCAL
-          : firebase.auth.Auth.Persistence.SESSION
+        shouldRemember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION
       );
-      if (rememberLogin?.checked) localStorage.setItem('fp_remembered_login_email', loginEmail);
-      else localStorage.removeItem('fp_remembered_login_email');
       await firebase.auth().signInWithEmailAndPassword(
         loginEmail,
         document.getElementById('freshlyLoginPassword').value
       );
+      localStorage.setItem('fp_remember_login_enabled', String(shouldRemember));
+      if (shouldRemember) localStorage.setItem('fp_remembered_login_email', loginEmail);
+      else localStorage.removeItem('fp_remembered_login_email');
       try { window.FRESHLYNative?.requestNotificationPermission?.(); } catch (notificationError) {
         console.warn('FRESHLY notification permission request:', notificationError);
       }
@@ -665,11 +669,25 @@
 
   async function bootFreshlyApp() {
     await ensureFirebaseReady();
+    const auth = firebase.auth();
+    const initialAuthUser = await new Promise(resolve => {
+      let unsubscribe = null;
+      unsubscribe = auth.onAuthStateChanged(user => {
+        if (unsubscribe) unsubscribe();
+        resolve(user);
+      });
+    });
+    if (initialAuthUser && localStorage.getItem('fp_remember_login_enabled') !== 'true') {
+      await auth.signOut();
+    }
     rtdb = firebase.database();
     const startFreshlyApp = () => {
   const managerUid = 'AiQ3H3qAsRdI4HMvfDfXgQCzplj1';
   document.getElementById('freshlyLogoutBtn')?.addEventListener('click', async () => {
-    if (confirm('هل تريد تسجيل الخروج من حسابك؟')) await firebase.auth().signOut();
+    if (confirm('هل تريد تسجيل الخروج من حسابك؟')) {
+      localStorage.setItem('fp_remember_login_enabled', 'false');
+      await firebase.auth().signOut();
+    }
   });
   const loginMessage = document.getElementById('freshlyLoginMessage');
 
@@ -684,18 +702,66 @@
 
   let currentUserRole = null;
   let currentPermissions = {};
+  let editingStaffUid = null;
   const rolePresets = {
-    cashier: {sales:true,orders:true,records:false,reports:false,expenses:false,custody:false,settings:false,menu:false},
-    support: {sales:false,orders:true,records:true,reports:false,expenses:false,custody:false,settings:false,menu:false},
-    accountant: {sales:false,orders:false,records:true,reports:true,expenses:true,custody:true,settings:false,menu:false},
+    cashier: {sales:true,orders:true,ordersEdit:true,ordersDelete:false,reports:false,finance:false,settings:false,menu:false},
+    support: {sales:false,orders:true,ordersEdit:true,ordersDelete:true,reports:false,finance:false,settings:false,menu:false},
+    accountant: {sales:false,orders:false,ordersEdit:false,ordersDelete:false,reports:true,finance:true,settings:false,menu:false},
     custom: {}
   };
   const staffRoleSelect = document.getElementById('staffRole');
+  const createStaffButton = document.getElementById('createStaffAccountBtn');
+  const updateStaffButton = document.getElementById('updateStaffAccountBtn');
+  function applyStaffPermissionForm(permissions) {
+    document.querySelectorAll('.staff-perm').forEach(box => {
+      let value = permissions?.[box.value];
+      if (box.value === 'finance' && value === undefined) value = !!(permissions?.expenses || permissions?.custody);
+      if (box.value === 'ordersEdit' && value === undefined) value = !!permissions?.orders;
+      if (box.value === 'ordersDelete' && value === undefined) value = !!permissions?.orders;
+      box.checked = !!value;
+    });
+  }
+  function collectStaffPermissions() {
+    const permissions = {};
+    document.querySelectorAll('.staff-perm').forEach(box => permissions[box.value] = box.checked);
+    // Retain legacy keys so older stored employee roles stay compatible.
+    permissions.expenses = !!permissions.finance;
+    permissions.custody = !!permissions.finance;
+    return permissions;
+  }
+  function resetStaffEditor() {
+    editingStaffUid = null;
+    document.getElementById('staffName').value = '';
+    document.getElementById('staffJobTitle').value = '';
+    document.getElementById('staffEmail').value = '';
+    document.getElementById('staffEmail').disabled = false;
+    document.getElementById('staffPassword').value = '';
+    document.getElementById('staffPassword').style.display = '';
+    staffRoleSelect.value = 'cashier';
+    document.getElementById('staffDeviceMode').value = 'cashier_only';
+    applyStaffPermissionForm(rolePresets.cashier);
+    createStaffButton.style.display = '';
+    updateStaffButton.style.display = 'none';
+  }
+  function beginStaffEdit(uid, data) {
+    editingStaffUid = uid;
+    document.getElementById('staffName').value = data.name || '';
+    document.getElementById('staffJobTitle').value = data.jobTitle || '';
+    document.getElementById('staffEmail').value = data.email || '';
+    document.getElementById('staffEmail').disabled = true;
+    document.getElementById('staffPassword').value = '';
+    document.getElementById('staffPassword').style.display = 'none';
+    staffRoleSelect.value = data.role || 'custom';
+    document.getElementById('staffDeviceMode').value = data.deviceMode || 'full';
+    applyStaffPermissionForm(data.permissions || {});
+    createStaffButton.style.display = 'none';
+    updateStaffButton.style.display = '';
+    document.getElementById('staffAccountMessage').textContent = 'تعديل المسمى الوظيفي وصلاحيات: ' + (data.name || data.email || uid);
+    document.getElementById('staffName').scrollIntoView({behavior:'smooth',block:'center'});
+  }
   staffRoleSelect?.addEventListener('change', () => {
     const preset = rolePresets[staffRoleSelect.value] || {};
-    document.querySelectorAll('.staff-perm').forEach(box => {
-      if (Object.prototype.hasOwnProperty.call(preset, box.value)) box.checked = !!preset[box.value];
-    });
+    applyStaffPermissionForm(preset);
   });
   async function renderStaffAccounts() {
     const host = document.getElementById('staffAccountsList');
@@ -707,9 +773,16 @@
         if (child.key === managerUid) return;
         const data = child.val() || {};
         const row = document.createElement('div');
-        row.style.cssText = 'padding:8px;border:1px solid var(--border-subtle);border-radius:8px;font-size:.75rem;display:flex;justify-content:space-between;gap:8px;align-items:center;';
+        row.style.cssText = 'padding:8px;border:1px solid var(--border-subtle);border-radius:8px;font-size:.75rem;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;';
         const label = document.createElement('span');
-        label.textContent = (data.name || data.email || child.key) + ' — ' + (data.active === false ? 'موقوف' : 'نشط') + ' — ' + (data.deviceMode === 'cashier_only' ? 'كاشير فقط' : 'شامل');
+        label.textContent = (data.name || data.email || child.key) +
+          (data.jobTitle ? ' · ' + data.jobTitle : '') +
+          ' — ' + (data.active === false ? 'موقوف' : 'نشط') +
+          ' — ' + (data.deviceMode === 'cashier_only' ? 'كاشير فقط' : 'جهاز شامل');
+        const edit = document.createElement('button');
+        edit.className = 'btn btn-dark';
+        edit.textContent = 'تعديل الصلاحيات';
+        edit.addEventListener('click', () => beginStaffEdit(child.key, data));
         const toggle = document.createElement('button');
         toggle.className = 'btn btn-danger';
         toggle.textContent = data.active === false ? 'تفعيل' : 'إيقاف';
@@ -717,40 +790,45 @@
           await rtdb.ref('userRoles/' + child.key + '/active').set(data.active === false);
           renderStaffAccounts();
         });
-        row.append(label,toggle); host.appendChild(row);
+        row.append(label, edit, toggle);
+        host.appendChild(row);
       });
-    } catch (err) { host.textContent = 'تعذر تحميل الحسابات. تأكد من قواعد Firebase بعد اعتمادها.'; }
+      if (!host.children.length) host.textContent = 'لا توجد حسابات موظفين إضافية.';
+    } catch (err) {
+      host.textContent = 'تعذر تحميل الحسابات. تأكد من قواعد Firebase بعد اعتمادها.';
+    }
   }
-  document.getElementById('createStaffAccountBtn')?.addEventListener('click', async () => {
+  createStaffButton?.addEventListener('click', async () => {
     const message = document.getElementById('staffAccountMessage');
-    const btn = document.getElementById('createStaffAccountBtn');
+    const btn = createStaffButton;
     const name = document.getElementById('staffName').value.trim();
+    const jobTitle = document.getElementById('staffJobTitle').value.trim();
     const email = document.getElementById('staffEmail').value.trim();
     const password = document.getElementById('staffPassword').value;
-    if (!name || !email || password.length < 6) { message.textContent = 'أدخل الاسم والبريد وكلمة مرور لا تقل عن 6 أحرف.'; return; }
-    btn.disabled = true; message.textContent = 'جارٍ إنشاء الحساب...';
-    let secondary = null;
-    let createdUser = null;
-    let roleSaved = false;
+    if (!name || !email || password.length < 6) {
+      message.textContent = 'أدخل الاسم والبريد وكلمة مرور لا تقل عن 6 أحرف.';
+      return;
+    }
+    btn.disabled = true;
+    message.textContent = 'جارٍ إنشاء الحساب...';
+    let secondary = null, createdUser = null, roleSaved = false;
     try {
-      secondary = firebase.apps.find(app => app.name === 'FRESHLY_STAFF_CREATION') || firebase.initializeApp(firebaseConfig, 'FRESHLY_STAFF_CREATION');
+      secondary = firebase.apps.find(app => app.name === 'FRESHLY_STAFF_CREATION') ||
+        firebase.initializeApp(firebaseConfig, 'FRESHLY_STAFF_CREATION');
       const credential = await secondary.auth().createUserWithEmailAndPassword(email, password);
       createdUser = credential.user;
-      const permissions = {};
-      document.querySelectorAll('.staff-perm').forEach(box => permissions[box.value] = box.checked);
+      const permissions = collectStaffPermissions();
       const role = staffRoleSelect.value;
       const deviceMode = document.getElementById('staffDeviceMode').value;
       await rtdb.ref('userRoles/' + credential.user.uid).set({
-        name, email, role, active:true, deviceMode, permissions,
+        name, jobTitle, email, role, active:true, deviceMode, permissions,
         createdAt: new Date().toISOString(), createdBy: managerUid
       });
       roleSaved = true;
       createdUser = null;
       await secondary.auth().signOut();
-      message.textContent = 'تم إنشاء الحساب وحفظ صلاحياته. أرسل بيانات الدخول للموظف بشكل آمن.';
-      document.getElementById('staffName').value = '';
-      document.getElementById('staffEmail').value = '';
-      document.getElementById('staffPassword').value = '';
+      message.textContent = 'تم إنشاء الحساب وحفظ المسمى الوظيفي والصلاحيات.';
+      resetStaffEditor();
       renderStaffAccounts();
     } catch (error) {
       if (createdUser && !roleSaved) {
@@ -761,7 +839,34 @@
         ? 'هذا البريد مسجل بالفعل.'
         : (roleSaved ? 'تم حفظ الحساب، لكن تعذر إنهاء جلسة الإنشاء. أعد فتح إدارة الحسابات للتحقق.' : 'تعذر إنشاء الحساب أو حفظ صلاحياته. إذا تم إنشاء حساب الدخول ولم يكتمل الحفظ، جرت محاولة إلغائه تلقائيًا.');
       try { if (secondary) await secondary.auth().signOut(); } catch (_) {}
-    } finally { btn.disabled = false; }
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  updateStaffButton?.addEventListener('click', async () => {
+    const message = document.getElementById('staffAccountMessage');
+    if (!editingStaffUid || firebase.auth().currentUser?.uid !== managerUid) return;
+    updateStaffButton.disabled = true;
+    try {
+      const changes = {
+        name: document.getElementById('staffName').value.trim(),
+        jobTitle: document.getElementById('staffJobTitle').value.trim(),
+        role: staffRoleSelect.value,
+        deviceMode: document.getElementById('staffDeviceMode').value,
+        permissions: collectStaffPermissions(),
+        updatedAt: new Date().toISOString(),
+        updatedBy: managerUid
+      };
+      if (!changes.name) throw new Error('أدخل اسم الموظف.');
+      await rtdb.ref('userRoles/' + editingStaffUid).update(changes);
+      message.textContent = 'تم تحديث المسمى الوظيفي والصلاحيات بنجاح.';
+      resetStaffEditor();
+      renderStaffAccounts();
+    } catch (error) {
+      message.textContent = error.message || 'تعذر حفظ تعديلات الموظف.';
+    } finally {
+      updateStaffButton.disabled = false;
+    }
   });
 
   firebase.auth().onAuthStateChanged(async (authenticatedUser) => {
@@ -775,30 +880,42 @@
         if (!roleData || roleData.active !== true) throw new Error('ACCOUNT_NOT_ACTIVE');
       }
       currentUserRole = isManager ? {role:'admin',name:'المدير',active:true,deviceMode:'full'} : roleData;
-      currentPermissions = isManager ? {sales:true,orders:true,records:true,reports:true,expenses:true,custody:true,settings:true,menu:true,accounts:true} : (roleData.permissions || {});
+      if (isManager) {
+        currentPermissions = {sales:true,orders:true,ordersEdit:true,ordersDelete:true,reports:true,finance:true,settings:true,menu:true,accounts:true};
+      } else {
+        const storedPermissions = roleData.permissions || {};
+        currentPermissions = {...storedPermissions};
+        currentPermissions.finance = storedPermissions.finance !== undefined
+          ? !!storedPermissions.finance : !!(storedPermissions.expenses || storedPermissions.custody);
+        currentPermissions.ordersEdit = storedPermissions.ordersEdit !== undefined
+          ? !!storedPermissions.ordersEdit : !!storedPermissions.orders;
+        currentPermissions.ordersDelete = storedPermissions.ordersDelete !== undefined
+          ? !!storedPermissions.ordersDelete : !!storedPermissions.orders;
+      }
       document.body.classList.remove('auth-locked');
       document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         const tab = btn.getAttribute('data-tab');
-        const key = ({pos:'sales',pending:'orders',records:'records',reports:'reports',settings:'settings',menu:'menu'})[tab] || tab;
+        const key = ({pos:'sales',pending:'orders',reports:'reports',finance:'finance',settings:'settings',menu:'menu'})[tab] || tab;
         const allowed = !!currentPermissions[key] && (roleData?.deviceMode !== 'cashier_only' || ['pos','pending'].includes(tab));
         btn.style.display = allowed ? '' : 'none';
       });
       document.querySelectorAll('.view-section').forEach(view => {
         const tab = view.id.replace('view-','');
-        const key = ({pos:'sales',pending:'orders',records:'records',reports:'reports',settings:'settings'})[tab] || tab;
+        const key = ({pos:'sales',pending:'orders',reports:'reports',finance:'finance',settings:'settings'})[tab] || tab;
         const allowed = isManager || (!!currentPermissions[key] && (currentUserRole.deviceMode !== 'cashier_only' || ['pos','pending'].includes(tab)));
         if (!allowed) view.classList.remove('active');
       });
       if (!isManager) {
         document.getElementById('freshlyAccountsPanel')?.remove();
       } else renderStaffAccounts();
-      const firstAllowed = ['pos','pending','records','reports','settings'].find(tab => {
+      const firstAllowed = ['pos','pending','reports','finance','settings'].find(tab => {
         const key = ({pos:'sales',pending:'orders'})[tab] || tab;
         return !!currentPermissions[key] && (currentUserRole.deviceMode !== 'cashier_only' || ['pos','pending'].includes(tab));
-      }) || 'sales';
+      }) || 'pos';
       if (!document.getElementById('view-' + firstAllowed)?.classList.contains('active')) {
         if (typeof switchTab === 'function') switchTab(firstAllowed);
       }
+      renderHeldOrders();
     } catch (err) {
       document.body.classList.add('auth-locked');
       loginMessage.textContent = err.message === 'ACCOUNT_NOT_ACTIVE' ? 'هذا الحساب موقوف. تواصل مع المدير.' : 'الحساب غير مضاف للنظام أو تعذر التحقق من الصلاحيات.';
@@ -806,19 +923,6 @@
       return;
     }
 
-  // Move existing invoice/post-sale and custody controls into their own tab without recreating or changing their data handlers.
-  const recordsWorkspace = document.getElementById('recordsWorkspace');
-  const invoiceHistoryPanel = document.getElementById('salesHistoryList')?.closest('.panel-box');
-  const custodyManagementPanel = document.getElementById('custodyDateInput')?.closest('.panel-box');
-  if (recordsWorkspace) {
-    recordsWorkspace.innerHTML = '';
-    if (invoiceHistoryPanel) recordsWorkspace.appendChild(invoiceHistoryPanel);
-    if (custodyManagementPanel) recordsWorkspace.appendChild(custodyManagementPanel);
-    const custodyLedgerPanel = document.createElement('div');
-    custodyLedgerPanel.className = 'panel-box';
-    custodyLedgerPanel.innerHTML = '<h4 style="font-size:.82rem;color:var(--gold-light);margin-bottom:7px;">📒 سجل العهدة المسجلة</h4><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>التاريخ</th><th>المبلغ</th><th>إجراء</th></tr></thead><tbody id="custodyHistoryBody"></tbody></table></div>';
-    recordsWorkspace.appendChild(custodyLedgerPanel);
-  }
   const todayStr = new Date().toISOString().split('T')[0];
 
   const DEFAULT_ITEMS = [
@@ -934,7 +1038,7 @@
   // **استماع وتحديث فوري للأوردرات القادمة من مجلد pendingOrders في قاعدة البيانات**
   rtdb.ref('pendingOrders').on('child_added', (snapshot) => {
     const onlineOrder = snapshot.val();
-    if (onlineOrder) {
+    if (onlineOrder && String(onlineOrder.status || 'pending') !== 'delivered') {
       const orderId = onlineOrder.id || snapshot.key;
       if (!state.sales.some(s => s.id === orderId) && !state.held.some(o => o.id === orderId)) {
         let rawTotal = onlineOrder.total || 0;
@@ -978,7 +1082,7 @@
     if (allOrders) {
       Object.keys(allOrders).forEach(key => {
         const onlineOrder = allOrders[key];
-        if (onlineOrder) {
+        if (onlineOrder && String(onlineOrder.status || 'pending') !== 'delivered') {
           const orderId = onlineOrder.id || key;
           if (!state.held.some(o => o.id === orderId) && !state.sales.some(s => s.id === orderId)) {
             let rawTotal = onlineOrder.total || 0;
@@ -1012,6 +1116,12 @@
   // Saved menu edits are merged by item ID; no demo cashier products are used as a fallback.
   const FRESHLY_MENU_CATALOG = {"categories":[{"id":"milkshake","names":{"ar":"ميلك شيك","en":"Milkshake","de":"Milchshake","fr":"Milkshake","ru":"Милкшейк"}},{"id":"iced_coffee","names":{"ar":"آيس كوفي","en":"Iced Coffee","de":"Eiskaffee","fr":"Café Glacé","ru":"Айс Кофе"}},{"id":"fresh_juice","names":{"ar":"عصائر فريش","en":"Fresh Juices","de":"Frische Säfte","fr":"Jus Frais","ru":"Свежие соки"}},{"id":"fruit_platters","names":{"ar":"أطباق فاكهة فريش","en":"Fruit Platters","de":"Obstteller","fr":"Assiettes Fruits","ru":"Фруктовые тарелки"}},{"id":"matcha","names":{"ar":"الماتشا","en":"Matcha","de":"Matcha","fr":"Matcha","ru":"Матча"}},{"id":"frappe","names":{"ar":"فرابيه","en":"Frappe","de":"Frappé","fr":"Frappé","ru":"Фраппе"}},{"id":"iced_tea","names":{"ar":"آيس تي","en":"Iced Tea","de":"Eistee","fr":"Thé Glacé","ru":"Айс Ти"}},{"id":"smoothie","names":{"ar":"سموزي","en":"Smoothie","de":"Smoothie","fr":"Smoothie","ru":"Смузи"}},{"id":"mojito","names":{"ar":"موهيتو","en":"Mojito","de":"Mojito","fr":"Mojito","ru":"Мохито"}},{"id":"hot_drinks","names":{"ar":"مشروبات ساخنة","en":"Hot Drinks","de":"Heißgetränke","fr":"Boissons Chaudes","ru":"Горячие напитки"}},{"id":"soft_drinks","names":{"ar":"سوفت درينكس","en":"Soft Drinks","de":"Softdrinks","fr":"Boissons Fraîches","ru":"Напитки"}},{"id":"asian_drinks","names":{"ar":"مشروبات آسيوية","en":"Asian Drinks","de":"Asiatische Getränke","fr":"Boissons Asiatiques","ru":"Азиатские напитки"}},{"id":"energy_refresh","names":{"ar":"الطاقة والانتعاش","en":"Energy & Refreshment","de":"Energie","fr":"Énergie","ru":"Энергия"}}],"items":[{"id":"ms_mango","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : مانجو","en":"Milkshake : Mango","de":"Milchshake : Mango","fr":"Milkshake : Mangue","ru":"Милкшейк : Манго"}},{"id":"ms_strawberry","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : فراولة","en":"Milkshake : Strawberry","de":"Milchshake : Erdbeere","fr":"Milkshake : Fraise","ru":"Милкшейк : Клубника"}},{"id":"ms_chocolate","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : شيكولاتة","en":"Milkshake : Chocolate","de":"Milchshake : Schokolade","fr":"Milkshake : Chocolat","ru":"Милкшейк : Шоколад"}},{"id":"ms_caramel","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : كراميل","en":"Milkshake : Caramel","de":"Milchshake : Karamell","fr":"Milkshake : Caramel","ru":"Милкшейк : Карамель"}},{"id":"ms_oreo","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : اوريو","en":"Milkshake : Oreo","de":"Milchshake : Oreo","fr":"Milkshake : Oreo","ru":"Милкшейк : Орео"}},{"id":"ms_passion","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : باشون فروت","en":"Milkshake : Passion Fruit","de":"Milchshake : Maracuja","fr":"Milkshake : Fruit de la Passion","ru":"Милкшейк : Маракуйя"}},{"id":"ms_kiwi","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : كيوي","en":"Milkshake : Kiwi","de":"Milchshake : Kiwi","fr":"Milkshake : Kiwi","ru":"Милкшейк : Киви"}},{"id":"ms_pina","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : بينا كولادا","en":"Milkshake : Pina Colada","de":"Milchshake : Pina Colada","fr":"Milkshake : Pina Colada","ru":"Милкшейк : Пина Колада"}},{"id":"ms_pineapple","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : أناناس","en":"Milkshake : Pineapple","de":"Milchshake : Ananas","fr":"Milkshake : Ananas","ru":"Милкшейк : Ананас"}},{"id":"ms_blueberry","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : بلوبيري","en":"Milkshake : Blueberry","de":"Milchshake : Blaubeere","fr":"Milkshake : Myrtille","ru":"Милкшейк : Черника"}},{"id":"ms_mixberry","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : ميكس بيري","en":"Milkshake : Mix Berry","de":"Milchshake : Beerenmix","fr":"Milkshake : Fruits Rouges","ru":"Милкшейк : Микс Ягод"}},{"id":"ms_pistachio","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : بستاشيو","en":"Milkshake : Pistachio","de":"Milchshake : Pistazie","fr":"Milkshake : Pistache","ru":"Милкшейк : Фисташка"}},{"id":"ms_lotus","categoryId":"milkshake","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"ميلك شيك : لوتس","en":"Milkshake : Lotus","de":"Milchshake : Lotus","fr":"Milkshake : Lotus","ru":"Милкшейк : Лотус"}},{"id":"ic_pistachio","categoryId":"iced_coffee","special":true,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس كوفي : بستاشيو","en":"Iced Coffee : Pistachio","de":"Eiskaffee : Pistazie","fr":"Café Glacé : Pistache","ru":"Айс Кофе : Фисташка"}},{"id":"ic_caramel_hazelnut","categoryId":"iced_coffee","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس كوفي : كراميل بندق","en":"Iced Coffee : Caramel Hazelnut","de":"Eiskaffee : Karamell-Haselnuss","fr":"Café Glacé : Caramel Noisette","ru":"Айс Кофе : Карамель Фундук"}},{"id":"ic_mocha","categoryId":"iced_coffee","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس كوفي : آيس موكا","en":"Iced Coffee : Iced Mocha","de":"Eiskaffee : Eismokka","fr":"Café Glacé : Mocha Glacé","ru":"Айс Кофе : Айс Мокка"}},{"id":"ic_hazelnut","categoryId":"iced_coffee","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس كوفي : بندق","en":"Iced Coffee : Hazelnut","de":"Eiskaffee : Haselnuss","fr":"Café Glacé : Noisette","ru":"Айс Кофе : Фундук"}},{"id":"ic_caramel","categoryId":"iced_coffee","special":true,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس كوفي : كراميل","en":"Iced Coffee : Caramel","de":"Eiskaffee : Karamell","fr":"Café Glacé : Caramel","ru":"Айс Кофе : Карамель"}},{"id":"ic_classic","categoryId":"iced_coffee","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس كوفي : كلاسيك","en":"Iced Coffee : Classic","de":"Eiskaffee : Klassisch","fr":"Café Glacé : Classique","ru":"Айс Кофе : Классик"}},{"id":"ic_latte","categoryId":"iced_coffee","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس كوفي : آيس لاتيه","en":"Iced Coffee : Iced Latte","de":"Eiskaffee : Eis-Latte","fr":"Café Glacé : Latte Glacé","ru":"Айс Кофе : Айс Латте"}},{"id":"ic_chocolate","categoryId":"iced_coffee","special":true,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس كوفي : شيكولاتة","en":"Iced Coffee : Chocolate","de":"Eiskaffee : Schokolade","fr":"Café Glacé : Chocolat","ru":"Айс Кофе : Шоколад"}},{"id":"ic_spanish","categoryId":"iced_coffee","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس كوفي : آيس سبانيش لاتيه","en":"Iced Coffee : Iced Spanish Latte","de":"Eiskaffee : Spanischer Eislatte","fr":"Café Glacé : Latte Espagnol Glacé","ru":"Айс Кофе : Айс Испанский Латте"}},{"id":"fj_pomegranate","categoryId":"fresh_juice","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"عصائر فريش : رمان","en":"Fresh Juices : Pomegranate","de":"Frische Säfte : Granatapfel","fr":"Jus Frais : Grenade","ru":"Свежие соки : Гранат"}},{"id":"fj_apple","categoryId":"fresh_juice","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"عصائر فريش : تفاح","en":"Fresh Juices : Apple","de":"Frische Säfte : Apfel","fr":"Jus Frais : Pomme","ru":"Свежие соки : Яблоко"}},{"id":"fj_lemon_mint","categoryId":"fresh_juice","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"عصائر فريش : ليمون نعناع","en":"Fresh Juices : Lemon Mint","de":"Frische Säfte : Zitrone-Minze","fr":"Jus Frais : Citron Menthe","ru":"Свежие соки : Лимон Мята"}},{"id":"fj_strawberry","categoryId":"fresh_juice","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"عصائر فريش : فراولة","en":"Fresh Juices : Strawberry","de":"Frische Säfte : Erdbeere","fr":"Jus Frais : Fraise","ru":"Свежие соки : Клубника"}},{"id":"fj_mango","categoryId":"fresh_juice","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"عصائر فريش : مانجو","en":"Fresh Juices : Mango","de":"Frische Säfte : Mango","fr":"Jus Frais : Mangue","ru":"Свежие соки : Манго"}},{"id":"fj_banana_milk","categoryId":"fresh_juice","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"عصائر فريش : موز باللبن","en":"Fresh Juices : Banana with Milk","de":"Frische Säfte : Banane mit Milch","fr":"Jus Frais : Banane Lait","ru":"Свежие соки : Банан с молоком"}},{"id":"fj_watermelon","categoryId":"fresh_juice","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"عصائر فريش : بطيخ","en":"Fresh Juices : Watermelon","de":"Frische Säfte : Wassermelone","fr":"Jus Frais : Pastèque","ru":"Свежие соки : Арбуз"}},{"id":"fj_orange","categoryId":"fresh_juice","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"عصائر فريش : برتقال","en":"Fresh Juices : Orange","de":"Frische Säfte : Orange","fr":"Jus Frais : Orange","ru":"Свежие соки : Апельсин"}},{"id":"fj_cantaloupe","categoryId":"fresh_juice","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"عصائر فريش : كانتلوب","en":"Fresh Juices : Cantaloupe","de":"Frische Säfte : Melone","fr":"Jus Frais : Melon","ru":"Свежие соки : Дыня"}},{"id":"fp_small","categoryId":"fruit_platters","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"اطباق فاكهة فريش : طبق صغير","en":"Fruit Platters : Small Plate","de":"Obstteller : Kleiner Teller","fr":"Assiettes Fruits : Petite Assiette","ru":"Фруктовые тарелки : Маленькая тарелка"}},{"id":"fp_medium","categoryId":"fruit_platters","special":false,"priceEGP":450,"priceEUR":7,"names":{"ar":"اطباق فاكهة فريش : طبق وسط","en":"Fruit Platters : Medium Plate","de":"Obstteller : Mittlerer Teller","fr":"Assiettes Fruits : Assiette Moyenne","ru":"Фруктовые тарелки : Средняя тарелка"}},{"id":"fp_large","categoryId":"fruit_platters","special":true,"priceEGP":600,"priceEUR":10,"names":{"ar":"اطباق فاكهة فريش : طبق كبير","en":"Fruit Platters : Large Plate","de":"Obstteller : Großer Teller","fr":"Assiettes Fruits : Grande Assiette","ru":"Фруктовые тарелки : Большая тарелка"}},{"id":"mc_blueberry","categoryId":"matcha","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"الماتشا : بلوبيري","en":"Matcha : Blueberry","de":"Matcha : Blaubeere","fr":"Matcha : Myrtille","ru":"Матча : Черника"}},{"id":"mc_coconut","categoryId":"matcha","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"الماتشا : جوز هند","en":"Matcha : Coconut","de":"Matcha : Kokosnuss","fr":"Matcha : Noix de Coco","ru":"Матча : Кокос"}},{"id":"mc_mango","categoryId":"matcha","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"الماتشا : مانجو","en":"Matcha : Mango","de":"Matcha : Mango","fr":"Matcha : Mangue","ru":"Матча : Манго"}},{"id":"mc_classic","categoryId":"matcha","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"الماتشا : كلاسيك","en":"Matcha : Classic","de":"Matcha : Klassisch","fr":"Matcha : Classique","ru":"Матча : Классик"}},{"id":"mc_strawberry","categoryId":"matcha","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"الماتشا : فراولة","en":"Matcha : Strawberry","de":"Matcha : Erdbeere","fr":"Matcha : Fraise","ru":"Матча : Клубника"}},{"id":"mc_pistachio","categoryId":"matcha","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"الماتشا : بستاشيو","en":"Matcha : Pistachio","de":"Matcha : Pistazie","fr":"Matcha : Pistache","ru":"Матча : Фисташка"}},{"id":"mc_caramel","categoryId":"matcha","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"الماتشا : كراميل","en":"Matcha : Caramel","de":"Matcha : Karamell","fr":"Matcha : Caramel","ru":"Матча : Карамель"}},{"id":"mc_vanilla","categoryId":"matcha","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"الماتشا : فانيليا","en":"Matcha : Vanilla","de":"Matcha : Vanille","fr":"Matcha : Vanille","ru":"Матча : Ваниль"}},{"id":"mc_espresso","categoryId":"matcha","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"الماتشا : اسبريسو","en":"Matcha : Espresso","de":"Matcha : Espresso","fr":"Matcha : Expresso","ru":"Матча : Эспрессо"}},{"id":"fr_caramel_cookies","categoryId":"frappe","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"فرابيه : كراميل كوكيز","en":"Frappe : Caramel Cookies","de":"Frappé : Karamell-Cookies","fr":"Frappé : Cookies Caramel","ru":"Фраппе : Карамель Печенье"}},{"id":"fr_oreo","categoryId":"frappe","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"فرابيه : اوريو","en":"Frappe : Oreo","de":"Frappé : Oreo","fr":"Frappé : Oreo","ru":"Фраппе : Орео"}},{"id":"fr_hazelnut","categoryId":"frappe","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"فرابيه : بندق","en":"Frappe : Hazelnut","de":"Frappé : Haselnuss","fr":"Frappé : Noisette","ru":"Фраппе : Фундук"}},{"id":"fr_lotus","categoryId":"frappe","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"فرابيه : لوتس","en":"Frappe : Lotus","de":"Frappé : Lotus","fr":"Frappé : Lotus","ru":"Фраппе : Лотус"}},{"id":"fr_classic","categoryId":"frappe","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"فرابيه : كلاسيك","en":"Frappe : Classic","de":"Frappé : Klassisch","fr":"Frappé : Classique","ru":"Фраппе : Классик"}},{"id":"fr_caramel","categoryId":"frappe","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"فرابيه : كراميل","en":"Frappe : Caramel","de":"Frappé : Karamell","fr":"Frappé : Caramel","ru":"Фраппе : Карамель"}},{"id":"fr_choc_hazelnut","categoryId":"frappe","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"فرابيه : شيكولاتة بندق","en":"Frappe : Chocolate Hazelnut","de":"Frappé : Schoko-Haselnuss","fr":"Frappé : Chocolat Noisette","ru":"Фраппе : Шоколад Фундук"}},{"id":"fr_chocolate","categoryId":"frappe","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"فرابيه : شيكولاتة","en":"Frappe : Chocolate","de":"Frappé : Schokolade","fr":"Frappé : Chocolat","ru":"Фраппе : Шоколад"}},{"id":"fr_pistachio","categoryId":"frappe","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"فرابيه : بستاشيو","en":"Frappe : Pistachio","de":"Frappé : Pistazie","fr":"Frappé : Pistache","ru":"Фраппе : Фисташка"}},{"id":"it_peach","categoryId":"iced_tea","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس تي : خوخ","en":"Iced Tea : Peach","de":"Eistee : Pfirsich","fr":"Thé Glacé : Pêche","ru":"Айс Ти : Персик"}},{"id":"it_passion","categoryId":"iced_tea","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس تي : باشون فروت","en":"Iced Tea : Passion Fruit","de":"Eistee : Maracuja","fr":"Thé Glacé : Fruit de la Passion","ru":"Айс Ти : Маракуйя"}},{"id":"it_orange","categoryId":"iced_tea","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس تي : برتقال","en":"Iced Tea : Orange","de":"Eistee : Orange","fr":"Thé Glacé : Orange","ru":"Айс Ти : Апельсин"}},{"id":"it_strawberry","categoryId":"iced_tea","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس تي : فراولة","en":"Iced Tea : Strawberry","de":"Eistee : Erdbeere","fr":"Thé Glacé : Fraise","ru":"Айс Ти : Клубника"}},{"id":"it_blueberry","categoryId":"iced_tea","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس تي : بلوبيري","en":"Iced Tea : Blueberry","de":"Eistee : Blaubeere","fr":"Thé Glacé : Myrtille","ru":"Айс Ти : Черника"}},{"id":"it_mango","categoryId":"iced_tea","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس تي : مانجو","en":"Iced Tea : Mango","de":"Eistee : Mango","fr":"Thé Glacé : Mangue","ru":"Айс Ти : Манго"}},{"id":"it_classic","categoryId":"iced_tea","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس تي : كلاسيك","en":"Iced Tea : Classic","de":"Eistee : Klassisch","fr":"Thé Glacé : Classique","ru":"Айс Ти : Классик"}},{"id":"it_apple","categoryId":"iced_tea","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس تي : تفاح","en":"Iced Tea : Apple","de":"Eistee : Apfel","fr":"Thé Glacé : Pomme","ru":"Айс Ти : Яблоко"}},{"id":"it_lemon","categoryId":"iced_tea","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"آيس تي : ليمون","en":"Iced Tea : Lemon","de":"Eistee : Zitrone","fr":"Thé Glacé : Citron","ru":"Айс Ти : Лимон"}},{"id":"sm_lemon_mint","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : ليمون نعناع","en":"Smoothie : Lemon Mint","de":"Smoothie : Zitrone-Minze","fr":"Smoothie : Citron Menthe","ru":"Смузи : Лимон Мята"}},{"id":"sm_banana","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : موز","en":"Smoothie : Banana","de":"Smoothie : Banane","fr":"Smoothie : Banane","ru":"Смузи : Банан"}},{"id":"sm_mango","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : مانجو","en":"Smoothie : Mango","de":"Smoothie : Mango","fr":"Smoothie : Mangue","ru":"Смузи : Манго"}},{"id":"sm_watermelon","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : بطيخ","en":"Smoothie : Watermelon","de":"Smoothie : Wassermelone","fr":"Smoothie : Pastèque","ru":"Смузи : Арбуз"}},{"id":"sm_cantaloupe","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : كانتلوب","en":"Smoothie : Cantaloupe","de":"Smoothie : Melone","fr":"Smoothie : Melon","ru":"Смузи : Дыня"}},{"id":"sm_passion","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : باشون فروت","en":"Smoothie : Passion Fruit","de":"Smoothie : Maracuja","fr":"Smoothie : Fruit de la Passion","ru":"Смузи : Маракуйя"}},{"id":"sm_strawberry","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : فراولة","en":"Smoothie : Strawberry","de":"Smoothie : Erdbeere","fr":"Smoothie : Fraise","ru":"Смузи : Клубника"}},{"id":"sm_blueberry","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : بلوبيري","en":"Smoothie : Blueberry","de":"Smoothie : Blaubeere","fr":"Smoothie : Myrtille","ru":"Смузи : Черника"}},{"id":"sm_peach","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : خوخ","en":"Smoothie : Peach","de":"Smoothie : Pfirsich","fr":"Smoothie : Pêche","ru":"Смузи : Персик"}},{"id":"sm_pineapple","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : أناناس","en":"Smoothie : Pineapple","de":"Smoothie : Ananas","fr":"Smoothie : Ananas","ru":"Смузи : Ананас"}},{"id":"sm_kiwi_lemon_mint","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : كيوي ليمون نعناع","en":"Smoothie : Kiwi Lemon Mint","de":"Smoothie : Kiwi-Zitrone-Minze","fr":"Smoothie : Kiwi Citron Menthe","ru":"Смузи : Киви Лимон Мята"}},{"id":"sm_peach_orange","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : خوخ برتقال","en":"Smoothie : Peach Orange","de":"Smoothie : Pfirsich-Orange","fr":"Smoothie : Pêche Orange","ru":"Смузи : Персик Апельсин"}},{"id":"sm_mixberry","categoryId":"smoothie","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : ميكس بيري","en":"Smoothie : Mixberry","de":"Smoothie : Beeren-Mix-Smoothie","fr":"Smoothie : Smoothie aux Fruits Rouges","ru":"Смузи : Миксбери"}},{"id":"sm_taste_of_love","categoryId":"smoothie","special":true,"priceEGP":300,"priceEUR":5,"names":{"ar":"سموزي : تيست اوف لوف","en":"Smoothie : Taste Of Love","de":"Smoothie : Geschmack der Liebe","fr":"Smoothie : Goût de l'Amour","ru":"Смузи : Вкус любви"}},{"id":"mj_classic","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : كلاسيك","en":"Mojito : Classic","de":"Mojito : Klassisch","fr":"Mojito : Classique","ru":"Мохито : Классик"}},{"id":"mj_orange","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : برتقال","en":"Mojito : Orange","de":"Mojito : Orange","fr":"Mojito : Orange","ru":"Мохито : Апельсин"}},{"id":"mj_mango","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : مانجو","en":"Mojito : Mango","de":"Mojito : Mango","fr":"Mojito : Mangue","ru":"Мохито : Манго"}},{"id":"mj_strawberry","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : فراولة","en":"Mojito : Strawberry","de":"Mojito : Erdbeere","fr":"Mojito : Fraise","ru":"Мохито : Клубника"}},{"id":"mj_peach","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : خوخ","en":"Mojito : Peach","de":"Mojito : Pfirsich","fr":"Mojito : Pêche","ru":"Мохито : Персик"}},{"id":"mj_blueberry","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : بلوبيري","en":"Mojito : Blueberry","de":"Mojito : Blaubeere","fr":"Mojito : Myrtille","ru":"Мохито : Черника"}},{"id":"mj_pineapple","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : أناناس","en":"Mojito : Pineapple","de":"Mojito : Ananas","fr":"Mojito : Ananas","ru":"Мохито : Ананас"}},{"id":"mj_kiwi","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : كيوي","en":"Mojito : Kiwi","de":"Mojito : Kiwi","fr":"Mojito : Kiwi","ru":"Мохито : Киви"}},{"id":"mj_blue_ocean","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : بلو اوشن","en":"Mojito : Blue Ocean","de":"Mojito : Blue Ocean","fr":"Mojito : Bleu Océan","ru":"Мохито : Голубой Океан"}},{"id":"mj_red_bull","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : ريد بول","en":"Mojito : Red Bull","de":"Mojito : Red Bull","fr":"Mojito : Red Bull","ru":"Мохито : Ред Булл"}},{"id":"mj_red_sea","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : ريد سي","en":"Mojito : Red Sea Mojito","de":"Mojito : Rotes Meer Mojito","fr":"Mojito : Mojito de la Mer Rouge","ru":"Мохито : Мохито Красное море"}},{"id":"mj_winter_light","categoryId":"mojito","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"موهيتو : وينتر لايت","en":"Mojito : Winter light Mojito","de":"Mojito : Winterlicht-Mojito","fr":"Mojito : Mojito Lumière d'Hiver","ru":"Мохито : Зимний свет"}},{"id":"hd_turkish","categoryId":"hot_drinks","special":false,"priceEGP":200,"priceEUR":3,"names":{"ar":"مشروبات ساخنة : قهوة تركي","en":"Hot Drinks : Turkish Coffee","de":"Heißgetränke : Türkischer Kaffee","fr":"Boissons Chaudes : Café Turc","ru":"Горячие напитки : Турецкий кофе"}},{"id":"hd_french","categoryId":"hot_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات ساخنة : قهوة فرنساوي","en":"Hot Drinks : French Coffee","de":"Heißgetränke : Französischer Kaffee","fr":"Boissons Chaudes : Café Français","ru":"Горячие напитки : Французский кофе"}},{"id":"hd_spanish_latte","categoryId":"hot_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات ساخنة : سبانيش لاتيه","en":"Hot Drinks : Spanish Latte","de":"Heißgetränke : Spanischer Latte","fr":"Boissons Chaudes : Latte Espagnol","ru":"Горячие напитки : Испанский латте"}},{"id":"hd_pistachio_latte","categoryId":"hot_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات ساخنة : بستاشيو لاتيه","en":"Hot Drinks : Pistachio Latte","de":"Heißgetränke : Pistazien Latte","fr":"Boissons Chaudes : Latte Pistache","ru":"Горячие напитки : Фисташковый латте"}},{"id":"hd_double_macchiato","categoryId":"hot_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات ساخنة : دبل ميكاتو","en":"Hot Drinks : Double Macchiato","de":"Heißgetränke : Doppelter Macchiato","fr":"Boissons Chaudes : Double Macchiato","ru":"Горячие напитки : Двойной маккиато"}},{"id":"hd_latte","categoryId":"hot_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات ساخنة : لاتيه","en":"Hot Drinks : Caffè Latte","de":"Heißgetränke : Caffè Latte","fr":"Boissons Chaudes : Caffè Latte","ru":"Горячие напитки : Латте"}},{"id":"hd_cappuccino","categoryId":"hot_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات ساخنة : كابتشينو","en":"Hot Drinks : Cappuccino","de":"Heißgetränke : Cappuccino","fr":"Boissons Chaudes : Cappuccino","ru":"Горячие напитки : Капучино"}},{"id":"hd_american","categoryId":"hot_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات ساخنة : امريكان كوفي","en":"Hot Drinks : American Coffee","de":"Heißgetränke : Amerikanischer Kaffee","fr":"Boissons Chaudes : Café Américain","ru":"Горячие напитки : Американский кофе"}},{"id":"hd_caramel_latte","categoryId":"hot_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات ساخنة : لاتيه كراميل","en":"Hot Drinks : Caramel Latte","de":"Heißgetränke : Karamell Latte","fr":"Boissons Chaudes : Latte Caramel","ru":"Горячие напитки : Карамельный латте"}},{"id":"hd_hot_matcha","categoryId":"hot_drinks","special":true,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات ساخنة : هوت ماتشا","en":"Hot Drinks : Hot Matcha","de":"Heißgetränke : Heisse Matcha","fr":"Boissons Chaudes : Matcha Chaud","ru":"Горячие напитки : Горячая матча"}},{"id":"hd_hot_chocolate","categoryId":"hot_drinks","special":true,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات ساخنة : شوكولاتة ساخنة","en":"Hot Drinks : Hot Chocolate","de":"Heißgetränke : Heisse Schokolade","fr":"Boissons Chaudes : Chocolat Chaud","ru":"Горячие напитки : Горячий шоколад"}},{"id":"sd_nescafe_can","categoryId":"soft_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سوفت درينكس : كانز نسكافيه (متعدد الاطعم)","en":"Soft Drinks : Nescafe Can (Multi-flavor)","de":"Softdrinks : Nescafe Dose","fr":"Boissons Fraîches : Canette Nescafe","ru":"Напитки : Банка Нескафе"}},{"id":"sd_lipton_can","categoryId":"soft_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سوفت درينكس : كانز ليبتون آيس تي (متعدد الاطعم)","en":"Soft Drinks : Lipton Iced Tea Can (Multi-flavor)","de":"Softdrinks : Lipton Eistee Dose","fr":"Boissons Fraîches : Canette Lipton Thé Glacé","ru":"Напитки : Банка Липтона"}},{"id":"sd_redbull_can","categoryId":"soft_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سوفت درينكس : كانز ريد بول (متعدد الاطعم)","en":"Soft Drinks : Red Bull Can (Multi-flavor)","de":"Softdrinks : Red Bull Dose","fr":"Boissons Fraîches : Canette Red Bull","ru":"Напитки : Банка Ред Булл"}},{"id":"sd_coke_triple","categoryId":"soft_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سوفت درينكس : كوكاكولا تريبل زيرو","en":"Soft Drinks : Coca-Cola Triple Zero","de":"Softdrinks : Coca-Cola Triple Zero","fr":"Boissons Fraîches : Coca-Cola Triple Zéro","ru":"Напитки : Кока-Кола Тройной Зеро"}},{"id":"sd_coke_coffee","categoryId":"soft_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سوفت درينكس : كوكاكولا كوفي","en":"Soft Drinks : Coca-Cola Coffee","de":"Softdrinks : Coca-Cola Kaffee","fr":"Boissons Fraîches : Coca-Cola Café","ru":"Напитки : Кока-Кола Кофе"}},{"id":"sd_pepsi_zero","categoryId":"soft_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سوفت درينكس : بيبسي زيرو","en":"Soft Drinks : Pepsi Zero","de":"Softdrinks : Pepsi Zero","fr":"Boissons Fraîches : Pepsi Zéro","ru":"Напитки : Пепси Зеро"}},{"id":"sd_pringles","categoryId":"soft_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"سوفت درينكس : برنجلز (متعدد الاطعم)","en":"Soft Drinks : Pringles (Multi-flavor)","de":"Softdrinks : Pringles","fr":"Boissons Fraîches : Pringles","ru":"Напитки : Принглс"}},{"id":"ad_brown_sugar","categoryId":"asian_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات آسيوية : براون شوجر","en":"Asian Drinks : Brown Sugar Milk Tea","de":"Asiatische Getränke : Brauner Zucker Milch-Tee","fr":"Boissons Asiatiques : Thé au Lait Sucre Roux","ru":"Азиатские напитки : Черный сахар"}},{"id":"ad_milk_tea","categoryId":"asian_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات آسيوية : ميلك تي","en":"Asian Drinks : Milk Tea","de":"Asiatische Getränke : Milch-Tee","fr":"Boissons Asiatiques : Thé au Lait","ru":"Азиатские напитки : Молочный чай"}},{"id":"ad_tiger_milk_tea","categoryId":"asian_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات آسيوية : تايجر ميلك تي","en":"Asian Drinks : Tiger Milk Tea","de":"Asiatische Getränke : Tiger Milch-Tee","fr":"Boissons Asiatiques : Thé au Lait Tigre","ru":"Азиатские напитки : Тигровый молочный чай"}},{"id":"ad_taro_milk_tea","categoryId":"asian_drinks","special":false,"priceEGP":300,"priceEUR":5,"names":{"ar":"مشروبات آسيوية : تارو ميلك تي","en":"Asian Drinks : Taro Milk Tea","de":"Asiatische Getränke : Taro Milch-Tee","fr":"Boissons Asiatiques : Thé au Lait Taro","ru":"Азиатские напитки : Молочный чай Таро"}},{"id":"en_mix_mango","categoryId":"energy_refresh","special":true,"priceEGP":300,"priceEUR":5,"names":{"ar":"الطاقة والانتعاش : انرجي ميكس مانجو","en":"Energy & Refreshment : Energy Mix Mango","de":"Energie : Energie-Mix Mango","fr":"Énergie : Mix Énergie Mangue","ru":"Энергия : Энерджи микс манго"}},{"id":"en_mix_hazelnut","categoryId":"energy_refresh","special":true,"priceEGP":300,"priceEUR":5,"names":{"ar":"الطاقة والانتعاش : انرجي ميكس بندق","en":"Energy & Refreshment : Energy Mix Hazelnut","de":"Energie : Energie-Mix Haselnuss","fr":"Énergie : Mix Énergie Noisette","ru":"Энергия : Энерджи микс фундук"}},{"id":"en_mix_classic","categoryId":"energy_refresh","special":true,"priceEGP":300,"priceEUR":5,"names":{"ar":"الطاقة والانتعاش : انرجي ميكس كلاسيك","en":"Energy & Refreshment : Energy Mix Classic","de":"Energie : Energie-Mix Klassisch","fr":"Énergie : Mix Énergie Classique","ru":"Энергия : Энерджи микс классик"}}]};
   let pickerTarget = 'cart', pickerSaleId = null, pickerCategory = 'all', pickerDraft = [];
+  // Cashier USD entry uses the item's published price tier instead of deriving $6 from its EGP exchange rate.
+  FRESHLY_MENU_CATALOG.items.forEach(item => {
+    if ((item.priceUSD === undefined || item.priceUSD === null) && Number(item.priceEUR) > 0) {
+      item.priceUSD = Number(item.priceEUR);
+    }
+  });
   function safeReadMenuStorage(key) {
     try { const value = JSON.parse(localStorage.getItem(key) || 'null'); return value; }
     catch (e) { console.warn('Menu catalog storage could not be read:', key, e); return null; }
@@ -1037,8 +1147,14 @@
   function menuName(item) { return item?.names?.[state.lang] || item?.names?.ar || item?.name || item?.id || 'صنف'; }
   function openMenuItemPicker(target, saleId) {
     pickerTarget = target; pickerSaleId = saleId || null; pickerCategory = 'all';
-    const sale = saleId ? getSaleById(saleId) : null;
-    pickerDraft = sale ? (sale.cart || []).map(c => { const item=getPublicMenu().items.find(i=>String(i.id)===String(c.itemId||c.id))||state.items.find(i=>i.id===c.itemId||i.id===c.id); return {...c, itemId:c.itemId||c.id||'', name:c.name||c.itemName||menuName(item), qty:Number(c.qty||1), price:c.price!==undefined?Number(c.price):getUnitPrice(item), currency:c.currency||(sale.currency&&sale.currency!=='MIXED'?sale.currency:state.currency)}; }) : (state.cart || []).map(c => { const item=state.items.find(i=>i.id===c.itemId||i.id===c.id)||getPublicMenu().items.find(i=>i.id===c.itemId||i.id===c.id); return {...c, itemId:c.itemId||c.id||'', name:c.name||menuName(item), qty:Number(c.qty||1), price:c.price!==undefined?Number(c.price):getUnitPrice(item), currency:c.currency||state.currency}; });
+    const sourceOrder = saleId ? (target === 'sale' ? getSaleById(saleId) : target === 'held' ? state.held.find(o => String(o.id) === String(saleId)) : null) : null;
+    pickerDraft = sourceOrder ? (sourceOrder.cart || []).map(c => {
+      const item=getPublicMenu().items.find(i=>String(i.id)===String(c.itemId||c.id))||state.items.find(i=>i.id===c.itemId||i.id===c.id);
+      return {...c,itemId:c.itemId||c.id||'',name:c.name||c.itemName||menuName(item),qty:Number(c.qty||1),price:c.price!==undefined?Number(c.price):getUnitPrice(item),currency:c.currency||(sourceOrder.currency&&sourceOrder.currency!=='MIXED'?sourceOrder.currency:state.currency)};
+    }) : (state.cart || []).map(c => {
+      const item=state.items.find(i=>i.id===c.itemId||i.id===c.id)||getPublicMenu().items.find(i=>i.id===c.itemId||i.id===c.id);
+      return {...c,itemId:c.itemId||c.id||'',name:c.name||c.itemName||menuName(item),qty:Number(c.qty||1),price:c.price!==undefined?Number(c.price):getUnitPrice(item),currency:c.currency||state.currency};
+    });
     let modal = document.getElementById('menuItemPickerModal');
     if (!modal) {
       modal = document.createElement('div'); modal.id='menuItemPickerModal';
@@ -1070,6 +1186,27 @@
         if(pickerTarget==='cart'){
           state.cart=pickerDraft.map(c=>({...c})); renderCartFull(); modal.style.display='none'; return;
         }
+        if(pickerTarget==='held'){
+          const order=state.held.find(o=>String(o.id)===String(pickerSaleId));
+          if(!order)return alert('الطلب لم يعد موجودًا في الأوردرات المعلقة.');
+          const newCurrencyTotals=cartCurrencyTotals(pickerDraft);
+          const newTotal=Object.values(newCurrencyTotals).reduce((a,v)=>a+v,0);
+          order.cart=JSON.parse(JSON.stringify(pickerDraft));
+          order.currencyTotals=newCurrencyTotals;
+          order.currency=Object.keys(newCurrencyTotals).filter(c=>newCurrencyTotals[c]>0).length>1?'MIXED':(Object.keys(newCurrencyTotals).find(c=>newCurrencyTotals[c]>0)||order.currency||state.currency);
+          order.total=newTotal;
+          order.updatedAt=new Date().toISOString();
+          persistState();
+          if(String(order.id).startsWith('WEB-')){
+            const update={cart:order.cart,total:newTotal,currency:order.currency,updatedAt:order.updatedAt};
+            rtdb.ref('pendingOrders/'+order.id).update(update).catch(err=>console.error('Pending order edit sync failed:',err));
+            rtdb.ref('orderTracking/'+order.id).update(update).catch(err=>console.error('Order tracking edit sync failed:',err));
+          }
+          renderHeldOrders();
+          modal.style.display='none';
+          alert('تم حفظ تعديل الطلب المعلق.');
+          return;
+        }
         const sale=getSaleById(pickerSaleId); if(!sale)return;
         const reason=prompt('سبب تعديل الفاتورة:'); if(!reason||!reason.trim())return;
         if(!sale.originalSnapshot)sale.originalSnapshot=JSON.parse(JSON.stringify(sale));
@@ -1083,9 +1220,9 @@
       modal.querySelector('#pickerItems').onclick=e=>{const b=e.target.closest('[data-item]');if(!b)return;const item=getPublicMenu().items.find(x=>String(x.id)===b.dataset.item);if(!item)return;modal.dataset.selectedId=item.id;const currency=modal.querySelector('#pickerCurrency').value||state.currency||'EGP';const usdRate=Number(document.getElementById('usdExchangeRateInput')?.value||localStorage.getItem('fp_report_usd_rate')||0);const price=currency==='EUR'?Number(item.priceEUR||0):currency==='USD'?Number(item.priceUSD||(usdRate>0?Number(item.priceEGP||0)/usdRate:0)):currency==='GBP'?Number(item.priceGBP||0):Number(item.priceEGP||0);modal.querySelector('#pickerPrice').value=price;modal.querySelector('#pickerQty').value=1;};
       modal.querySelector('#pickerDraftRows').onclick=e=>{const b=e.target.closest('[data-remove]');if(b){pickerDraft.splice(Number(b.dataset.remove),1);renderPickerDraft();}};
     }
-    modal.querySelector('#pickerCurrency').value=(sale&&sale.currency&&sale.currency!=='MIXED')?sale.currency:(state.currency||'EGP');
-    modal.querySelector('#pickerTitle').textContent=target==='cart'?'إضافة أصناف للفاتورة':'تعديل أصناف الفاتورة '+saleId;
-    modal.querySelector('#pickerSave').textContent=target==='cart'?'اعتماد الأصناف في الفاتورة':'حفظ تعديل الفاتورة';
+    modal.querySelector('#pickerCurrency').value=(sourceOrder&&sourceOrder.currency&&sourceOrder.currency!=='MIXED')?sourceOrder.currency:(state.currency||'EGP');
+    modal.querySelector('#pickerTitle').textContent=target==='cart'?'إضافة أصناف للفاتورة':target==='held'?'تعديل الطلب المعلق '+saleId:'تعديل أصناف الفاتورة '+saleId;
+    modal.querySelector('#pickerSave').textContent=target==='cart'?'اعتماد الأصناف في الفاتورة':target==='held'?'حفظ تعديل الطلب':'حفظ تعديل الفاتورة';
     modal.style.display='flex'; renderPickerCatalog(); renderPickerDraft();
   }
   function renderPickerCatalog(){
@@ -1247,53 +1384,64 @@
     const menuContainer = document.getElementById('menuOrdersList');
     const heldContainer = document.getElementById('heldOrdersList');
     const badge = document.getElementById('pendingBadge');
-    
-    badge.textContent = state.held.length;
-    badge.style.display = state.held.length > 0 ? 'inline-block' : 'none';
-
-    const menuOrders = state.held.filter(o => String(o.id).startsWith('WEB-'));
-    const heldOrders = state.held.filter(o => !String(o.id).startsWith('WEB-'));
-
-    if (menuOrders.length === 0) {
-      menuContainer.innerHTML = `<div class="cart-empty" style="padding:10px;">لا توجد أوردرات قادمة من المنيو</div>`;
-    } else {
-      menuContainer.innerHTML = menuOrders.map(ord => `
-        <div class="panel-box" style="display:flex; justify-content:space-between; align-items:center; padding:8px; margin-bottom:0;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:800; color:var(--gold-main); font-size:0.8rem;">📍 ${ord.customer} (${ord.id})</div>
-            <div style="font-size:0.68rem; color:var(--text-muted);">${ord.date} — المجموع: ${formatMoney(ord.total || 0)}</div>
-            <select aria-label="حالة الأوردر" onchange="updateOrderTrackingStatus('${ord.id}',this.value)" style="margin-top:5px;background:var(--bg-input);color:var(--gold-light);border:1px solid var(--border-gold);border-radius:5px;padding:4px;font-size:.68rem;max-width:150px;">
-              <option value="pending" ${(ord.status||'pending')==='pending'?'selected':''}>📥 تم الاستلام</option>
-              <option value="preparing" ${ord.status==='preparing'?'selected':''}>👨‍🍳 قيد التجهيز</option>
-              <option value="ready" ${ord.status==='ready'?'selected':''}>✅ جاهز للاستلام</option>
-            </select>
-            <input class="input-field" style="margin-top:5px;padding:5px;font-size:.68rem" placeholder="تعليق / ملاحظة الطلب" value="${String(ord.comment||'').replace(/"/g,'&quot;')}" onchange="saveOrderComment('${ord.id}',this.value)">
-          </div>
-          <div style="display:flex; gap:4px;align-items:center;">
-            <button class="btn btn-gold" style="padding:6px 10px; font-size:0.75rem;" onclick="loadHeldOrderToCart('${ord.id}')">📥 مراجعة وإتمام</button>
-            <button class="btn btn-danger" style="padding:6px 8px; font-size:0.7rem;" onclick="removeHeld('${ord.id}')">✕</button>
-          </div>
-        </div>
-      `).join('');
+    const activeOrders = state.held.filter(o => String(o.status || 'pending') !== 'delivered');
+    if (badge) {
+      badge.textContent = activeOrders.length;
+      badge.style.display = activeOrders.length > 0 ? 'inline-block' : 'none';
     }
+    const menuOrders = activeOrders.filter(o => String(o.id).startsWith('WEB-'));
+    const heldOrders = activeOrders.filter(o => !String(o.id).startsWith('WEB-'));
+    const canEdit = !!currentUserRole && !!currentPermissions.orders && currentPermissions.ordersEdit !== false;
+    const canDelete = !!currentUserRole && !!currentPermissions.orders && currentPermissions.ordersDelete !== false;
+    const canReview = !!currentUserRole && !!currentPermissions.sales;
 
-    if (heldOrders.length === 0) {
-      heldContainer.innerHTML = `<div class="cart-empty" style="padding:10px;">لا توجد أوردرات معلقة يدوياً</div>`;
-    } else {
-      heldContainer.innerHTML = heldOrders.map(ord => `
-        <div class="panel-box" style="display:flex; justify-content:space-between; align-items:center; padding:8px; margin-bottom:0;">
-          <div>
-            <div style="font-weight:800; color:var(--gold-main); font-size:0.8rem;">📍 ${ord.customer} (${ord.id})</div>
-            <div style="font-size:0.68rem; color:var(--text-muted);">${ord.date} — المجموع: ${formatMoney(ord.total || 0)}</div>
-            <select aria-label="حالة الطلب" onchange="updateLocalOrderStatus('${ord.id}',this.value)" style="margin-top:5px;background:var(--bg-input);color:var(--gold-light);border:1px solid var(--border-gold);border-radius:5px;padding:4px;font-size:.68rem"><option value="pending" ${(ord.status||'pending')==='pending'?'selected':''}>تم الاستلام</option><option value="preparing" ${ord.status==='preparing'?'selected':''}>قيد التجهيز</option><option value="ready" ${ord.status==='ready'?'selected':''}>جاهز</option><option value="delivered" ${ord.status==='delivered'?'selected':''}>تم التسليم</option></select>
-            <input class="input-field" style="margin-top:5px;padding:5px;font-size:.68rem" placeholder="تعليق / ملاحظة الطلب" value="${String(ord.comment||'').replace(/"/g,'&quot;')}" onchange="saveOrderComment('${ord.id}',this.value)">
-          </div>
-          <div style="display:flex; gap:4px;">
-            <button class="btn btn-gold" style="padding:6px 10px; font-size:0.75rem;" onclick="loadHeldOrderToCart('${ord.id}')">📥 مراجعة وإتمام</button>
-            <button class="btn btn-danger" style="padding:6px 8px; font-size:0.7rem;" onclick="removeHeld('${ord.id}')">✕</button>
-          </div>
-        </div>
-      `).join('');
+    const renderActions = id => `
+      <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+        ${canEdit ? '<button class="btn btn-dark" style="padding:6px 8px;font-size:.7rem" onclick="editHeldOrder(\''+id+'\')">✏️ تعديل</button>' : ''}
+        ${canReview ? '<button class="btn btn-gold" style="padding:6px 8px;font-size:.7rem" onclick="loadHeldOrderToCart(\''+id+'\')">📥 مراجعة وإتمام</button>' : ''}
+        ${canDelete ? '<button class="btn btn-danger" style="padding:6px 8px;font-size:.7rem" onclick="removeHeld(\''+id+'\')">🗑 حذف</button>' : ''}
+      </div>`;
+    if (menuContainer) {
+      menuContainer.innerHTML = menuOrders.length ? menuOrders.map(ord => {
+        const id = escapeHtml(String(ord.id));
+        const status = String(ord.status || 'pending');
+        return `
+          <div class="panel-box" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;margin-bottom:0;flex-wrap:wrap;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:800;color:var(--gold-main);font-size:.8rem;">📍 ${escapeHtml(ord.customer || 'طلب من المنيو')} (${id})</div>
+              <div style="font-size:.68rem;color:var(--text-muted);">${escapeHtml(ord.date || '')} — المجموع: ${formatMoney(ord.total || 0)}</div>
+              <select aria-label="حالة الأوردر" onchange="updateOrderTrackingStatus('${id}',this.value)" style="margin-top:5px;background:var(--bg-input);color:var(--gold-light);border:1px solid var(--border-gold);border-radius:5px;padding:4px;font-size:.68rem;max-width:150px;">
+                <option value="pending" ${status==='pending'?'selected':''}>📥 تم الاستلام</option>
+                <option value="preparing" ${status==='preparing'?'selected':''}>👨‍🍳 قيد التجهيز</option>
+                <option value="ready" ${status==='ready'?'selected':''}>✅ جاهز للاستلام</option>
+                <option value="delivered">📦 تم التسليم</option>
+              </select>
+              <input class="input-field" style="margin-top:5px;padding:5px;font-size:.68rem" placeholder="تعليق / ملاحظة الطلب" value="${escapeHtml(ord.comment || '')}" onchange="saveOrderComment('${id}',this.value)">
+            </div>
+            ${renderActions(id)}
+          </div>`;
+      }).join('') : '<div class="cart-empty" style="padding:10px;">لا توجد أوردرات نشطة قادمة من المنيو</div>';
+    }
+    if (heldContainer) {
+      heldContainer.innerHTML = heldOrders.length ? heldOrders.map(ord => {
+        const id = escapeHtml(String(ord.id));
+        const status = String(ord.status || 'pending');
+        return `
+          <div class="panel-box" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px;margin-bottom:0;flex-wrap:wrap;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:800;color:var(--gold-main);font-size:.8rem;">📍 ${escapeHtml(ord.customer || 'طلب معلق')} (${id})</div>
+              <div style="font-size:.68rem;color:var(--text-muted);">${escapeHtml(ord.date || '')} — المجموع: ${formatMoney(ord.total || 0)}</div>
+              <select aria-label="حالة الطلب" onchange="updateLocalOrderStatus('${id}',this.value)" style="margin-top:5px;background:var(--bg-input);color:var(--gold-light);border:1px solid var(--border-gold);border-radius:5px;padding:4px;font-size:.68rem">
+                <option value="pending" ${status==='pending'?'selected':''}>تم الاستلام</option>
+                <option value="preparing" ${status==='preparing'?'selected':''}>قيد التجهيز</option>
+                <option value="ready" ${status==='ready'?'selected':''}>جاهز</option>
+                <option value="delivered">تم التسليم</option>
+              </select>
+              <input class="input-field" style="margin-top:5px;padding:5px;font-size:.68rem" placeholder="تعليق / ملاحظة الطلب" value="${escapeHtml(ord.comment || '')}" onchange="saveOrderComment('${id}',this.value)">
+            </div>
+            ${renderActions(id)}
+          </div>`;
+      }).join('') : '<div class="cart-empty" style="padding:10px;">لا توجد أوردرات معلقة يدوياً</div>';
     }
     renderHomeOrderStatus();
   }
@@ -1306,6 +1454,7 @@
     const payload = {status, updatedAt: new Date().toISOString()};
     rtdb.ref('orderTracking/' + id).update(payload).catch(err => console.error('Tracking status update failed:', err));
     rtdb.ref('pendingOrders/' + id).update(payload).catch(err => console.error('Pending order status update failed:', err));
+    persistState();
     renderHeldOrders();
     renderHomeOrderStatus();
   };
@@ -1322,6 +1471,12 @@
       rtdb.ref('pendingOrders/'+id).update(payload).catch(()=>{});
     }
     renderHomeOrderStatus();
+  };
+
+  window.editHeldOrder = function(id) {
+    if (!currentUserRole || currentPermissions.ordersEdit !== true) return alert('ليس لديك صلاحية تعديل الطلبات.');
+    if (!state.held.some(o => String(o.id) === String(id))) return alert('الطلب غير موجود.');
+    openMenuItemPicker('held', id);
   };
 
   window.loadHeldOrderToCart = function(id, keepInPending = false) {
@@ -1450,6 +1605,7 @@
   customerLookupInput.removeEventListener('change', autoLoadMatchingHeldOrder);
 
   window.removeHeld = function(id) {
+    if (!currentUserRole || currentPermissions.ordersDelete !== true) return alert('ليس لديك صلاحية حذف الطلبات.');
     if (String(id).startsWith('WEB-')) {
       rtdb.ref('pendingOrders/' + id).remove().catch(err => {
         console.error("Error removing order from Firebase:", err);
@@ -1461,12 +1617,22 @@
   };
 
   function renderHomeOrderStatus() {
-    const host=document.getElementById('homeOrderStatusBoard'); if(!host) return;
-    const delivered=state.sales.filter(o=>o.orderStatus==='delivered').slice(0,5).map(o=>({...o,status:'delivered',comment:o.orderComment||'',total:o.netTotal??o.total}));
-    const active=[...state.held,...delivered].sort((a,b)=>String(b.updatedAt||b.createdAt||b.date||'').localeCompare(String(a.updatedAt||a.createdAt||a.date||'')));
-    if(!active.length){host.innerHTML='<div class="cart-empty" style="padding:4px">لا توجد طلبات</div>';return;}
-    const labels={pending:'📥 تم الاستلام',preparing:'👨‍🍳 قيد التجهيز',ready:'✅ جاهز للاستلام',delivered:'📦 تم التسليم'};
-    host.innerHTML=active.slice(0,12).map(o=>`<div class="lookup-result"><div style="display:flex;justify-content:space-between;gap:5px"><b>${escapeHtml(o.customer||o.id)}</b><span class="status-pill">${labels[o.status||'pending']||labels.pending}</span></div><div style="color:var(--text-muted);margin-top:3px">${escapeHtml(o.id)} · ${formatMoney(o.total||0)}</div>${o.comment?`<div style="color:var(--gold-light);margin-top:3px">💬 ${escapeHtml(o.comment)}</div>`:''}</div>`).join('');
+    const host = document.getElementById('homeOrderStatusBoard');
+    if (!host) return;
+    const active = state.held
+      .filter(o => String(o.status || 'pending') !== 'delivered')
+      .sort((a,b) => String(b.updatedAt || b.createdAt || b.date || '').localeCompare(String(a.updatedAt || a.createdAt || a.date || '')));
+    if (!active.length) {
+      host.innerHTML = '<div class="cart-empty" style="padding:4px">لا توجد طلبات نشطة</div>';
+      return;
+    }
+    const labels = {pending:'📥 تم الاستلام',preparing:'👨‍🍳 قيد التجهيز',ready:'✅ جاهز للاستلام'};
+    host.innerHTML = active.slice(0,12).map(o => `
+      <div class="lookup-result">
+        <div style="display:flex;justify-content:space-between;gap:5px"><b>${escapeHtml(o.customer || o.id)}</b><span class="status-pill">${labels[o.status || 'pending'] || labels.pending}</span></div>
+        <div style="color:var(--text-muted);margin-top:3px">${escapeHtml(o.id)} · ${formatMoney(o.total || 0)}</div>
+        ${o.comment ? `<div style="color:var(--gold-light);margin-top:3px">💬 ${escapeHtml(o.comment)}</div>` : ''}
+      </div>`).join('');
   }
   function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function lookupMatchesOrder(order,q){
@@ -1806,17 +1972,17 @@
   }
   passwordProtectionToggle?.addEventListener('change', () => {
     const enabled = passwordProtectionToggle.checked;
-    if (!enabled && !confirm('هل تريد إيقاف الرقم السري عند فتح التطبيق؟ سيظل بإمكانك تشغيله مرة أخرى من الإعدادات.')) {
-      passwordProtectionToggle.checked = true;
+    const confirmationPassword = prompt('أدخل كلمة مرور التطبيق لتأكيد ' + (enabled ? 'تشغيل' : 'إيقاف') + ' الحماية:');
+    if (!confirmationPassword) {
+      passwordProtectionToggle.checked = !enabled;
       return;
     }
     try {
-      if (window.FRESHLYNative && typeof window.FRESHLYNative.setPasswordEnabled === 'function') {
-        const saved = window.FRESHLYNative.setPasswordEnabled(enabled);
-        if (!saved) throw new Error('تعذر حفظ إعداد الحماية');
-      } else {
-        localStorage.setItem('fp_password_protection_enabled', String(enabled));
+      if (!window.FRESHLYNative || typeof window.FRESHLYNative.setPasswordEnabled !== 'function') {
+        throw new Error('تأكيد كلمة مرور التطبيق متاح من داخل نسخة Android فقط.');
       }
+      const saved = window.FRESHLYNative.setPasswordEnabled(enabled, confirmationPassword);
+      if (!saved) throw new Error('كلمة مرور التطبيق غير صحيحة أو تعذر حفظ الإعداد.');
       if (passwordProtectionStatus) passwordProtectionStatus.textContent =
         enabled ? 'الرقم السري مفعّل وسيُطلب عند فتح التطبيق.' : 'الرقم السري متوقف ولن يُطلب عند فتح التطبيق.';
     } catch (error) {
@@ -1864,6 +2030,27 @@
   document.getElementById('customStartDate').addEventListener('change', renderReports);
   document.getElementById('customEndDate').addEventListener('change', renderReports);
 
+  let editingExpenseRef = null;
+  function renderExpensesHistory() {
+    const host = document.getElementById('expenseHistoryBody');
+    if (!host) return;
+    const rows = [];
+    Object.keys(state.expensesByDate || {}).sort().reverse().forEach(date => {
+      const expenses = Array.isArray(state.expensesByDate[date]) ? state.expensesByDate[date] : [];
+      expenses.forEach((expense,index) => {
+        rows.push(`<tr>
+          <td>${escapeHtml(date)}</td>
+          <td>${escapeHtml(expense.desc || 'مصروف')}</td>
+          <td>${formatAmount(expense.amount, expense.currency || 'EGP')}</td>
+          <td style="white-space:nowrap">
+            <button type="button" class="btn btn-dark" style="padding:4px 7px" data-expense-edit-date="${escapeHtml(date)}" data-expense-edit-index="${index}">تعديل</button>
+            <button type="button" class="btn btn-danger" style="padding:4px 7px" data-expense-delete-date="${escapeHtml(date)}" data-expense-delete-index="${index}">حذف</button>
+          </td>
+        </tr>`);
+      });
+    });
+    host.innerHTML = rows.join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">لا توجد مصروفات مسجلة</td></tr>';
+  }
   function loadCustodyForDate(){
     const d=document.getElementById('custodyDateInput').value||todayStr;
     const exists=Object.prototype.hasOwnProperty.call(state.custodyByDate||{},d);
@@ -1880,10 +2067,41 @@
     }).join(''):'<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">لا توجد عهد مسجلة</td></tr>';
   }
   document.addEventListener('click',e=>{
-    const btn=e.target.closest('[data-custody-date]');
-    if(!btn)return;
-    document.getElementById('custodyDateInput').value=btn.dataset.custodyDate;
-    loadCustodyForDate();
+    const custodyButton=e.target.closest('[data-custody-date]');
+    if(custodyButton){
+      document.getElementById('custodyDateInput').value=custodyButton.dataset.custodyDate;
+      loadCustodyForDate();
+      switchTab('finance');
+      return;
+    }
+    const editExpense=e.target.closest('[data-expense-edit-date]');
+    if(editExpense){
+      const date=editExpense.dataset.expenseEditDate, index=Number(editExpense.dataset.expenseEditIndex);
+      const expense=(state.expensesByDate[date]||[])[index];
+      if(!expense)return;
+      editingExpenseRef={date,index};
+      document.getElementById('expenseDateInput').value=date;
+      document.getElementById('expenseAmountInput').value=Number(expense.amount||0);
+      document.getElementById('expenseCurrencyInput').value=expense.currency||'EGP';
+      document.getElementById('expenseDescInput').value=expense.desc||'';
+      document.getElementById('addExpenseBtn').textContent='حفظ التعديل';
+      switchTab('finance');
+      return;
+    }
+    const deleteExpense=e.target.closest('[data-expense-delete-date]');
+    if(deleteExpense){
+      const date=deleteExpense.dataset.expenseDeleteDate, index=Number(deleteExpense.dataset.expenseDeleteIndex);
+      const list=state.expensesByDate[date]||[];
+      if(!list[index])return;
+      if(!confirm('تأكيد حذف المصروف المحدد؟'))return;
+      list.splice(index,1);
+      if(!list.length)delete state.expensesByDate[date];
+      if(editingExpenseRef&&editingExpenseRef.date===date&&editingExpenseRef.index===index){
+        editingExpenseRef=null;
+        document.getElementById('addExpenseBtn').textContent='إضافة';
+      }
+      persistState();renderReports();renderExpensesHistory();
+    }
   });
   document.getElementById('custodyDateInput').addEventListener('change',loadCustodyForDate);
   document.getElementById('saveCustodyBtn').addEventListener('click', () => {
@@ -1905,19 +2123,31 @@
   });
 
   document.getElementById('addExpenseBtn').addEventListener('click', () => {
-    const d = document.getElementById('expenseDateInput').value || todayStr;
-    const amount = Number(document.getElementById('expenseAmountInput').value || 0);
-    const currency = document.getElementById('expenseCurrencyInput').value || 'EGP';
-    const desc = document.getElementById('expenseDescInput').value.trim() || 'مصروف';
-    if (amount <= 0) return alert('أدخل مبلغ صحيح');
-    if (!state.expensesByDate[d]) state.expensesByDate[d] = [];
-    state.expensesByDate[d].push({ amount, currency, desc });
-    persistState();
-    renderReports();
-    document.getElementById('expenseAmountInput').value = '';
-    document.getElementById('expenseCurrencyInput').value = 'EGP';
-    document.getElementById('expenseDescInput').value = '';
-    alert('تم تسجيل المصروف بنجاح 💸');
+    const d=document.getElementById('expenseDateInput').value||todayStr;
+    const amount=Number(document.getElementById('expenseAmountInput').value||0);
+    const currency=document.getElementById('expenseCurrencyInput').value||'EGP';
+    const desc=document.getElementById('expenseDescInput').value.trim()||'مصروف';
+    if(amount<=0||!Number.isFinite(amount))return alert('أدخل مبلغ صحيح');
+    const updated={amount,currency,desc};
+    if(editingExpenseRef){
+      const oldList=state.expensesByDate[editingExpenseRef.date]||[];
+      const oldExpense=oldList[editingExpenseRef.index];
+      if(oldExpense)oldList.splice(editingExpenseRef.index,1);
+      if(!oldList.length)delete state.expensesByDate[editingExpenseRef.date];
+      if(!state.expensesByDate[d])state.expensesByDate[d]=[];
+      state.expensesByDate[d].push(updated);
+      editingExpenseRef=null;
+      document.getElementById('addExpenseBtn').textContent='إضافة';
+      alert('تم تعديل المصروف بنجاح.');
+    }else{
+      if(!state.expensesByDate[d])state.expensesByDate[d]=[];
+      state.expensesByDate[d].push(updated);
+      alert('تم تسجيل المصروف بنجاح 💸');
+    }
+    persistState();renderReports();renderExpensesHistory();
+    document.getElementById('expenseAmountInput').value='';
+    document.getElementById('expenseCurrencyInput').value='EGP';
+    document.getElementById('expenseDescInput').value='';
   });
 
   function showReceiptModal(sale) {
@@ -1946,6 +2176,7 @@
     document.querySelectorAll('.view-section').forEach(s => s.classList.toggle('active', s.id === `view-${name}`));
     if (name === 'pending') renderHeldOrders();
     if (name === 'reports') renderReports();
+    if (name === 'finance') { renderCustodyHistory(); renderExpensesHistory(); }
   }
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1957,6 +2188,7 @@
   document.getElementById('custodyDateInput').value = todayStr;
   loadCustodyForDate();
   renderCustodyHistory();
+  renderExpensesHistory();
   document.getElementById('expenseDateInput').value = todayStr;
   document.getElementById('customStartDate').value = todayStr;
   document.getElementById('customEndDate').value = todayStr;
