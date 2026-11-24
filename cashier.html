@@ -335,8 +335,7 @@
               <option value="all">📅 كل الأيام</option>
               <option value="custom">🎯 فترة محددة (من - إلى)</option>
             </select>
-            <button id="printReportBtn" class="btn btn-dark" style="padding:7px 9px; font-size:0.7rem;">🖨️ طباعة</button>
-            <button id="exportReportPdfBtn" class="btn btn-gold" style="padding:7px 9px; font-size:0.7rem;">📄 PDF</button>
+            <button id="printReportBtn" class="btn btn-gold" style="padding:9px 13px; min-width:155px; font-size:0.78rem; font-weight:900;">🖨️ طباعة / حفظ PDF</button>
             <button id="shareReportWhatsAppBtn" class="btn btn-dark" style="padding:7px 9px; font-size:0.7rem;">💬 واتساب</button>
           </div>
         </div>
@@ -1343,18 +1342,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function printCurrentReport() {
     renderReports();
     const reportSection = document.getElementById('view-reports');
-    const printable = reportSection.cloneNode(true);
-    // نسخة الطباعة تحتوي التقرير فقط؛ لا نطبع أدوات الفترة أو سجل الفواتير أو أدوات التحكم حتى لو تغيرت أصنافها لاحقًا.
-    printable.querySelectorAll('.no-print, #reportPeriodSelect, #customDateRangeBox, #reportRatesBox, #salesHistoryList, #printReportBtn, #exportReportPdfBtn, #shareReportWhatsAppBtn, #custodyAmountInput, #custodyCurrencyInput, #expenseAmountInput, #expenseCurrencyInput, #expenseDescInput').forEach(element => {
-      const removablePanel = element.closest('.panel-box.no-print');
-      if (removablePanel) removablePanel.remove();
-      else element.remove();
-    });
-    printable.querySelectorAll('.panel-box').forEach(panel => {
-      if (panel.querySelector('#salesHistoryList') || panel.querySelector('#reportRatesBox')) panel.remove();
-    });
-    printable.classList.add('report-print-sheet');
-
+    const printable = reportSection;
     const printedAt = new Date();
     const dateText = printedAt.toLocaleDateString('ar-EG', {year:'numeric',month:'long',day:'numeric'});
     const timeText = printedAt.toLocaleTimeString('ar-EG', {hour:'2-digit',minute:'2-digit'});
@@ -1418,50 +1406,42 @@ document.addEventListener('DOMContentLoaded', () => {
       @media print { body { margin:0; } .report-print-sheet { page-break-before:auto; } }
     `;
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      const fallbackHead = printHead.cloneNode(true);
-      fallbackHead.id = 'temporaryCompanyPrintHead';
-      reportSection.insertBefore(fallbackHead, reportSection.firstChild);
-      const style = document.createElement('style');
-      style.id = 'temporaryReportPrintStyle';
-      style.textContent = printCss + `
-        @media print {
-          html,body { display:block !important; width:100% !important; min-height:0 !important; height:auto !important; overflow:visible !important; background:#fff !important; color:#202733 !important; }
-          body.printing-report-only #view-reports { display:flex !important; flex-direction:column !important; }
-          body.printing-report-only .view-section:not(#view-reports), body.printing-report-only .app-header, body.printing-report-only .nav-bar, body.printing-report-only .no-print { display:none !important; }
-          .phone-frame { display:block !important; width:100% !important; max-width:none !important; height:auto !important; max-height:none !important; overflow:visible !important; border:0 !important; box-shadow:none !important; }
-          .main-content { display:block !important; overflow:visible !important; padding:0 !important; }
-        }`;
-      document.head.appendChild(style);
-      document.body.classList.add('printing-report-only');
-      const cleanup = () => {
-        fallbackHead.remove();
-        style.remove();
-        document.body.classList.remove('printing-report-only');
-        window.removeEventListener('afterprint', cleanup);
-      };
-      window.addEventListener('afterprint', cleanup);
-      window.print();
-      setTimeout(cleanup, 3000);
-      return;
-    }
-
-    printWindow.document.open();
-    printWindow.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(companySettings.name || 'FRESHLY')} - التقرير المالي</title><style>${printCss}</style></head><body>${printable.outerHTML}</body></html>`);
-    printWindow.document.close();
-    printWindow.onload = () => {
-      setTimeout(() => {
-        try { printWindow.focus(); printWindow.print(); }
-        catch (error) { console.error('Report printing failed:', error); alert('تعذر فتح الطباعة. حاول السماح بالنوافذ المنبثقة ثم أعد المحاولة.'); }
-      }, 350);
+    const printStyle = document.createElement('style');
+    printStyle.id = 'freshlyNativeReportPrintStyle';
+    printStyle.textContent = printCss + `
+      @page { size: A4 landscape !important; margin: 8mm !important; }
+      @media print {
+        .report-print-sheet .no-print { display: none !important; }
+        html, body, .phone-frame, .main-content, #view-reports {
+          width: 100% !important; max-width: none !important; height: auto !important;
+          min-height: 0 !important; overflow: visible !important; margin: 0 !important;
+          padding: 0 !important; background: #fff !important;
+        }
+        .report-print-sheet { display: flex !important; flex-direction: column !important; }
+      }`;
+    document.head.appendChild(printStyle);
+    printable.classList.add('report-print-sheet');
+    document.body.classList.add('printing-report-only');
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      printHead.remove();
+      printStyle.remove();
+      printable.classList.remove('report-print-sheet');
+      document.body.classList.remove('printing-report-only');
+      delete window.__freshlyCleanupPrint;
     };
+    window.__freshlyCleanupPrint = cleanup;
+    if (window.FRESHLYNative && typeof window.FRESHLYNative.printReport === 'function') {
+      window.FRESHLYNative.printReport((companySettings.name || 'FRESHLY') + ' - التقرير المالي');
+    } else {
+      try { window.print(); }
+      catch (error) { alert('تعذر فتح الطباعة من هذا المتصفح.'); cleanup(); }
+      setTimeout(cleanup, 5000);
+    }
   }
   document.getElementById('printReportBtn').addEventListener('click', printCurrentReport);
-  document.getElementById('exportReportPdfBtn').addEventListener('click', () => {
-    alert('في نافذة الطباعة اختر "حفظ كملف PDF" أو Save as PDF.');
-    printCurrentReport();
-  });
   document.getElementById('shareReportWhatsAppBtn').addEventListener('click', () => {
     renderReports();
     const text = window.__freshlyCurrentReportText || 'تقرير FRESHLY';
