@@ -5,7 +5,12 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.content.ContentValues
 import android.net.Uri
+import android.print.PrintAttributes
+import android.print.PrintManager
+import android.print.PrintJob
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -36,6 +41,9 @@ class MainActivity : FragmentActivity() {
     private val chooserRequest = 4102
     private val prefs by lazy { getSharedPreferences("freshly_security", MODE_PRIVATE) }
     private var hasOpenedHome = false
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var activePrintJob: PrintJob? = null
+    private var printMonitor: Runnable? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -109,6 +117,48 @@ class MainActivity : FragmentActivity() {
                 "ERROR"
             }
         }
+        @JavascriptInterface
+        fun printReport(requestedTitle: String) {
+            runOnUiThread {
+                try {
+                    val title = requestedTitle.take(100).ifBlank { "FRESHLY - التقرير المالي" }
+                    val printManager = getSystemService(PRINT_SERVICE) as PrintManager
+                    val adapter = webView.createPrintDocumentAdapter(title)
+                    val attributes = PrintAttributes.Builder()
+                        .setMediaSize(PrintAttributes.MediaSize.ISO_A4.asLandscape())
+                        .setMinMargins(PrintAttributes.Margins(250, 250, 250, 250))
+                        .build()
+                    printMonitor?.let { mainHandler.removeCallbacks(it) }
+                    activePrintJob = printManager.print(title, adapter, attributes)
+                    val monitor = object : Runnable {
+                        override fun run() {
+                            val job = activePrintJob
+                            if (job == null || job.isCompleted || job.isCancelled || job.isFailed) {
+                                webView.evaluateJavascript(
+                                    "window.__freshlyCleanupPrint && window.__freshlyCleanupPrint()", null
+                                )
+                                activePrintJob = null
+                                printMonitor = null
+                            } else {
+                                mainHandler.postDelayed(this, 1000)
+                            }
+                        }
+                    }
+                    printMonitor = monitor
+                    mainHandler.postDelayed(monitor, 1000)
+                } catch (error: Exception) {
+                    webView.evaluateJavascript(
+                        "window.__freshlyCleanupPrint && window.__freshlyCleanupPrint()", null
+                    )
+                    Toast.makeText(
+                        this@MainActivity,
+                        "تعذر فتح نافذة الطباعة: ${error.localizedMessage ?: "خطأ غير معروف"}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+
     }
 
     private fun openHome() {
@@ -216,6 +266,9 @@ class MainActivity : FragmentActivity() {
     }
 
     override fun onDestroy() {
+        printMonitor?.let { mainHandler.removeCallbacks(it) }
+        printMonitor = null
+        activePrintJob = null
         if (::webView.isInitialized) webView.destroy()
         super.onDestroy()
     }
