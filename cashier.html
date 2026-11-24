@@ -1212,21 +1212,24 @@ document.addEventListener('DOMContentLoaded', () => {
   window.editSaleItems = function(id) { const s=getSaleById(id); if(!s||s.cancelled)return; openMenuItemPicker('sale',id); };
 
   window.adjustSale = function(id) {
-    const s = getSaleById(id); if (!s || s.cancelled) return;
-    const current = Number(s.netTotal !== undefined ? s.netTotal : s.total || 0);
-    const raw = prompt(`أدخل قيمة المرتجع/التخفيض من الفاتورة ${id} (${s.currency || 'EGP'}).\nالصافي الحالي: ${current}`, '0');
-    if (raw === null) return;
-    const amount = Number(raw);
-    if (!Number.isFinite(amount) || amount < 0 || amount > current) { alert('قيمة غير صحيحة. يجب أن تكون بين صفر والصافي الحالي.'); return; }
-    if (!amount) return;
-    const reason = prompt('سبب المرتجع أو التعديل:');
-    if (!reason || !reason.trim()) { alert('يجب تسجيل السبب. لم يتم الحفظ.'); return; }
-    if (!s.originalSnapshot) s.originalSnapshot = JSON.parse(JSON.stringify(s));
-    s.adjustments = Array.isArray(s.adjustments) ? s.adjustments : [];
-    s.adjustments.push({type:'refund_or_reduction', amount, reason:reason.trim(), at:new Date().toISOString()});
-    s.netTotal = Math.max(0, current - amount);
-    s.refundedTotal = Number(s.refundedTotal || 0) + amount;
-    persistState(); renderReports(); renderSalesHistory();
+    const s=getSaleById(id);if(!s||s.cancelled)return;
+    const hasCurrencyBreakdown=!!(s.netCurrencyTotals||s.currencyTotals);
+    const currency=hasCurrencyBreakdown?(prompt('حدد عملة المرتجع: EGP أو USD أو EUR أو GBP',Object.keys(s.netCurrencyTotals||s.currencyTotals).find(c=>Number((s.netCurrencyTotals||s.currencyTotals)[c]||0)>0)||'EGP')||'').toUpperCase():(s.currency||'EGP');
+    if(hasCurrencyBreakdown&&!['EGP','USD','EUR','GBP'].includes(currency))return alert('عملة غير صحيحة');
+    const current=hasCurrencyBreakdown?Number((s.netCurrencyTotals||s.currencyTotals)[currency]||0):Number(s.netTotal!==undefined?s.netTotal:s.total||0);
+    const raw=prompt('أدخل قيمة المرتجع/التخفيض ('+currency+'). الصافي الحالي: '+current,'0');
+    if(raw===null)return;
+    const amount=Number(raw);
+    if(!Number.isFinite(amount)||amount<0||amount>current)return alert('قيمة غير صحيحة. يجب أن تكون بين صفر والصافي الحالي.');
+    if(!amount)return;
+    const reason=prompt('سبب المرتجع أو التعديل:');if(!reason||!reason.trim())return alert('يجب تسجيل السبب. لم يتم الحفظ.');
+    if(!s.originalSnapshot)s.originalSnapshot=JSON.parse(JSON.stringify(s));
+    s.adjustments=Array.isArray(s.adjustments)?s.adjustments:[];
+    s.adjustments.push({type:'refund_or_reduction',amount,currency,reason:reason.trim(),at:new Date().toISOString()});
+    if(hasCurrencyBreakdown){s.netCurrencyTotals=s.netCurrencyTotals||{...s.currencyTotals};s.netCurrencyTotals[currency]=Math.max(0,current-amount);s.netTotal=Object.values(s.netCurrencyTotals).reduce((a,v)=>a+Number(v||0),0);}
+    else s.netTotal=Math.max(0,current-amount);
+    s.refundedTotal=Number(s.refundedTotal||0)+amount;
+    persistState();renderReports();renderSalesHistory();
     alert('تم تسجيل المرتجع مع الاحتفاظ ببيانات الفاتورة الأصلية وسجل التعديلات.');
   };
   window.cancelSale = function(id) {
@@ -1236,6 +1239,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!confirm(`تأكيد إلغاء الفاتورة ${id}؟ سيتم الاحتفاظ بسجلها الأصلي.`)) return;
     if (!s.originalSnapshot) s.originalSnapshot = JSON.parse(JSON.stringify(s));
     s.cancelled = true; s.netTotal = 0;
+    if(s.netCurrencyTotals)Object.keys(s.netCurrencyTotals).forEach(c=>s.netCurrencyTotals[c]=0);
     s.adjustments = Array.isArray(s.adjustments) ? s.adjustments : [];
     s.adjustments.push({type:'cancel', reason:reason.trim(), at:new Date().toISOString()});
     persistState(); renderReports(); renderSalesHistory();
@@ -1383,7 +1387,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .print-date { min-width:150px; text-align:left; color:#596575; }
       .print-date span,.print-date small { display:block; font-size:9px; }
       .print-date strong { display:block; margin:3px 0; font-size:11px; color:#263448; }
-      .report-print-sheet .panel-box { display:block !important; width:100%; margin:0 !important; padding:9px 11px !important; border:1px solid #d9dee6 !important; border-radius:7px !important; background:#fff !important; color:#202733 !important; box-shadow:none !important; overflow:visible !important; break-inside:avoid; }
+      .report-print-sheet .panel-box { display:block !important; width:100%; min-width:0 !important; margin:0 !important; padding:9px 11px !important; border:1px solid #d9dee6 !important; border-radius:7px !important; background:#fff !important; color:#202733 !important; box-shadow:none !important; overflow:visible !important; break-inside:auto !important; page-break-inside:auto !important; }
       .report-print-sheet h3,.report-print-sheet h4 { margin:0 0 7px !important; color:#263448 !important; font-size:12px !important; font-weight:900 !important; }
       .report-print-sheet table { width:100% !important; border-collapse:collapse !important; table-layout:auto; font-size:10px !important; }
       .report-print-sheet thead { display:table-header-group; }
@@ -1394,10 +1398,14 @@ document.addEventListener('DOMContentLoaded', () => {
       .report-print-sheet tbody tr:nth-child(even) { background:#f5f7fa !important; }
       .report-print-sheet tfoot td { background:#eee7d5 !important; color:#253247 !important; font-weight:900 !important; }
       .report-print-sheet .panel-box[style*="grid-template-columns"] { display:grid !important; grid-template-columns:repeat(5,minmax(0,1fr)) !important; gap:7px !important; }
-      .report-print-sheet .panel-box[style*="grid-template-columns"] > div { padding:8px 5px !important; border:1px solid #e0e4eb; border-radius:6px; background:#f8fafc; }
+      .report-print-sheet .panel-box[style*="grid-template-columns"] > div { min-width:0 !important; overflow-wrap:anywhere !important; word-break:break-word !important; padding:8px 5px !important; border:1px solid #e0e4eb; border-radius:6px; background:#f8fafc; }
       .report-print-sheet .panel-box[style*="grid-template-columns"] > div:last-child { grid-column:auto !important; border-top:1px solid #e0e4eb !important; padding-top:8px !important; }
       .report-print-sheet .panel-box[style*="grid-template-columns"] > div > div:first-child { color:#647084 !important; font-size:9px !important; }
-      .report-print-sheet .panel-box[style*="grid-template-columns"] > div > div:last-child { color:#263448 !important; font-size:12px !important; font-weight:900 !important; }
+      .report-print-sheet .panel-box[style*="grid-template-columns"] > div > div:last-child { color:#263448 !important; font-size:10px !important; line-height:1.35 !important; font-weight:900 !important; overflow-wrap:anywhere !important; word-break:break-word !important; white-space:normal !important; }
+      .report-print-sheet .panel-box[style*="grid-template-columns"] { break-inside:avoid !important; page-break-inside:avoid !important; }
+      .report-print-sheet table,.report-print-sheet tbody { break-inside:auto !important; page-break-inside:auto !important; }
+      .report-print-sheet td,.report-print-sheet th { overflow-wrap:anywhere !important; word-break:break-word !important; }
+      @media print { @page { size:A4 landscape; margin:8mm; } }
       .report-print-sheet * { max-width:100%; }
       @media print { body { margin:0; } .report-print-sheet { page-break-before:auto; } }
     `;
