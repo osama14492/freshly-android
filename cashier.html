@@ -710,8 +710,8 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.classList.add('auth-locked');
       loginMessage.textContent = err.message === 'ACCOUNT_NOT_ACTIVE' ? 'هذا الحساب موقوف. تواصل مع المدير.' : 'الحساب غير مضاف للنظام أو تعذر التحقق من الصلاحيات.';
       await firebase.auth().signOut();
+      return;
     }
-  });
 
   // Move existing invoice/post-sale and custody controls into their own tab without recreating or changing their data handlers.
   const recordsWorkspace = document.getElementById('recordsWorkspace');
