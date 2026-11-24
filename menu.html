@@ -896,7 +896,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const permDiv = document.getElementById('permanentQrcode');
     permDiv.innerHTML = '';
     new QRCode(permDiv, {
-      text: window.location.href,
+      text: 'https://osama14492.github.io/FRESHLY-MENU-/',
       width: 20,
       height: 20,
       colorDark: "#000000",
@@ -1151,7 +1151,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.openQRModal = function() {
     document.getElementById('qrModal').classList.add('open');
-    const url = window.location.href;
+    const url = 'https://osama14492.github.io/FRESHLY-MENU-/';
     document.getElementById('shareUrlBox').textContent = url;
     const qrDiv = document.getElementById('modalQrcode');
     qrDiv.innerHTML = '';
@@ -1166,7 +1166,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.copyShareLink = function() {
-    navigator.clipboard.writeText(window.location.href).then(() => {
+    navigator.clipboard.writeText('https://osama14492.github.io/FRESHLY-MENU-/').then(() => {
       alert('✅ Link copied!');
     });
   };
