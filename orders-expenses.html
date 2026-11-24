@@ -20,7 +20,7 @@ header{background:var(--panel);border-bottom:1px solid var(--border);padding:12p
 .datebar{margin-top:10px;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);padding:7px 9px;border-radius:9px;font-size:.75rem;color:var(--gold-light)}
 .datebar input{width:100%;background:var(--input);color:var(--text);border:1px solid var(--line);padding:6px;border-radius:6px;color-scheme:dark}
 main{flex:1;overflow:auto;padding:11px;display:flex;flex-direction:column;gap:10px}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .tab{padding:11px 6px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--gold-light);font-weight:800;font-size:.82rem}
 .tab.active{background:linear-gradient(135deg,#bf953f,#fcf6ba 35%,#d4af37 65%,#aa771c);color:#10131a;border-color:transparent}
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:11px;display:flex;flex-direction:column;gap:9px}
@@ -133,7 +133,8 @@ footer{text-align:center;padding:9px;color:#687080;font-size:.6rem;border-top:1p
 <script>
 (()=>{
 'use strict';
-const KEY='freshly_orders_personal_expenses_v1';\nconst SHORTAGE_KEY='freshly_material_shortages_v1';
+const KEY='freshly_orders_personal_expenses_v1';
+const SHORTAGE_KEY='freshly_material_shortages_v1';
 const $=id=>document.getElementById(id);
 const currencies=['EGP','USD','EUR'];
 const words={
@@ -142,7 +143,9 @@ const words={
 };
 let lang='ar',mode='purchase',editingId=null,shortageEditingId=null,entries=load(),shortages=loadShortages();
 function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v:[]}catch(e){return[]}}
-function persist(){localStorage.setItem(KEY,JSON.stringify(entries))}\nfunction loadShortages(){try{const v=JSON.parse(localStorage.getItem(SHORTAGE_KEY)||'[]');return Array.isArray(v)?v:[]}catch(e){return[]}}\nfunction persistShortages(){localStorage.setItem(SHORTAGE_KEY,JSON.stringify(shortages))}
+function persist(){localStorage.setItem(KEY,JSON.stringify(entries))}
+function loadShortages(){try{const v=JSON.parse(localStorage.getItem(SHORTAGE_KEY)||'[]');return Array.isArray(v)?v:[]}catch(e){return[]}}
+function persistShortages(){localStorage.setItem(SHORTAGE_KEY,JSON.stringify(shortages))}
 function t(k){return words[lang][k]||k}
 function today(){const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
 function money(n){return Number(n||0).toLocaleString(lang==='ar'?'ar-EG':'en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
