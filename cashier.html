@@ -383,7 +383,7 @@
               <input type="number" id="custodyAmountInput" class="input-field" min="0" step="0.01">
             </div>
             <div><label style="font-size:0.62rem;color:var(--text-muted);">العملة</label><select id="custodyCurrencyInput" class="input-field"><option value="EGP">EGP جنيه</option><option value="USD">USD دولار</option><option value="EUR">EUR يورو</option><option value="GBP">GBP إسترليني</option></select></div>
-            <button id="saveCustodyBtn" class="btn btn-gold" style="padding:7px 10px;">حفظ</button>
+            <div style="display:flex;gap:4px;align-items:flex-end;"><button id="saveCustodyBtn" class="btn btn-gold" style="padding:7px 10px;">حفظ / تعديل</button><button id="deleteCustodyBtn" class="btn btn-danger" style="padding:7px 9px;">حذف</button></div>
           </div>
         </div>
 
@@ -1459,12 +1459,29 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('customStartDate').addEventListener('change', renderReports);
   document.getElementById('customEndDate').addEventListener('change', renderReports);
 
+  function loadCustodyForDate(){
+    const d=document.getElementById('custodyDateInput').value||todayStr;
+    const exists=Object.prototype.hasOwnProperty.call(state.custodyByDate||{},d);
+    document.getElementById('custodyAmountInput').value=exists?Number(state.custodyByDate[d]||0):'';
+    document.getElementById('custodyCurrencyInput').value=(state.custodyCurrencyByDate||{})[d]||'EGP';
+  }
+  document.getElementById('custodyDateInput').addEventListener('change',loadCustodyForDate);
   document.getElementById('saveCustodyBtn').addEventListener('click', () => {
     const d=document.getElementById('custodyDateInput').value||todayStr;
-    state.custodyByDate[d]=Number(document.getElementById('custodyAmountInput').value||0);
+    const amount=Number(document.getElementById('custodyAmountInput').value||0);
+    if(amount<0||!Number.isFinite(amount))return alert('أدخل مبلغًا صحيحًا');
+    state.custodyByDate[d]=amount;
     state.custodyCurrencyByDate=state.custodyCurrencyByDate||{};
     state.custodyCurrencyByDate[d]=document.getElementById('custodyCurrencyInput').value||'EGP';
-    persistState();renderReports();alert('تم حفظ العهدة بنجاح ✅');
+    persistState();renderReports();alert('تم حفظ / تعديل العهدة بنجاح');
+  });
+  document.getElementById('deleteCustodyBtn').addEventListener('click',()=>{
+    const d=document.getElementById('custodyDateInput').value||todayStr;
+    if(!Object.prototype.hasOwnProperty.call(state.custodyByDate||{},d))return alert('لا توجد عهدة مسجلة لهذا التاريخ');
+    if(!confirm('تأكيد حذف عهدة يوم '+d+'؟'))return;
+    delete state.custodyByDate[d];
+    if(state.custodyCurrencyByDate)delete state.custodyCurrencyByDate[d];
+    persistState();loadCustodyForDate();renderReports();alert('تم حذف العهدة المحددة');
   });
 
   document.getElementById('addExpenseBtn').addEventListener('click', () => {
@@ -1516,6 +1533,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('saleDateInput').value = todayStr;
   document.getElementById('custodyDateInput').value = todayStr;
+  loadCustodyForDate();
   document.getElementById('expenseDateInput').value = todayStr;
   document.getElementById('customStartDate').value = todayStr;
   document.getElementById('customEndDate').value = todayStr;
