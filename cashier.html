@@ -582,9 +582,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('freshlyLoginPassword').value
       );
     } catch (error) {
+      console.error('FRESHLY Firebase login error:', error);
       loginMessage.textContent = error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found'
-        ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.'
-        : 'تعذر تسجيل الدخول. تحقق من الاتصال وبيانات الحساب.';
+        ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة. (' + (error.code || 'unknown') + ')'
+        : 'فشل تسجيل الدخول: ' + (error.code || 'unknown') + '. تحقق من اتصال الإنترنت وإعدادات Firebase Authentication.';
       submit.disabled = false;
       submit.textContent = 'تسجيل الدخول';
     }
