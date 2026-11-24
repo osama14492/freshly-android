@@ -840,6 +840,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (state.cart.length === 0) return alert('الفاتورة فارغة');
     const customer = document.getElementById('customerNameInput').value.trim() || 'كاشير عام';
     const currencyTotals=cartCurrencyTotals(state.cart);
+    const discountPercent=Number(document.getElementById('discountInput').value||0);
+    const taxPercent=document.getElementById('hideTaxCheckbox').checked?0:Number(document.getElementById('taxInput').value||0);
+    Object.keys(currencyTotals).forEach(c=>{currencyTotals[c]=(currencyTotals[c]*(1-discountPercent/100))*(1+taxPercent/100);});
     const subtotal=Object.values(currencyTotals).reduce((sum,value)=>sum+value,0);
 
     const sale = {
