@@ -685,13 +685,13 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.classList.remove('auth-locked');
       document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         const tab = btn.getAttribute('data-tab');
-        const key = ({pending:'orders',records:'records',reports:'reports',settings:'settings',menu:'menu'})[tab] || tab;
-        const allowed = !!currentPermissions[key] && (roleData?.deviceMode !== 'cashier_only' || ['sales','pending'].includes(tab));
+        const key = ({pos:'sales',pending:'orders',records:'records',reports:'reports',settings:'settings',menu:'menu'})[tab] || tab;
+        const allowed = !!currentPermissions[key] && (roleData?.deviceMode !== 'cashier_only' || ['pos','pending'].includes(tab));
         btn.style.display = allowed ? '' : 'none';
       });
       document.querySelectorAll('.view-section').forEach(view => {
         const tab = view.id.replace('view-','');
-        const key = ({pending:'orders',records:'records',reports:'reports',settings:'settings'})[tab] || tab;
+        const key = ({pos:'sales',pending:'orders',records:'records',reports:'reports',settings:'settings'})[tab] || tab;
         const allowed = isManager || (!!currentPermissions[key] && (currentUserRole.deviceMode !== 'cashier_only' || ['sales','pending'].includes(tab)));
         if (!allowed) view.classList.remove('active');
       });
@@ -699,8 +699,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('freshlyAccountsPanel')?.remove();
         document.getElementById('freshlyLogoutBtn')?.addEventListener('click', () => firebase.auth().signOut());
       } else renderStaffAccounts();
-      const firstAllowed = ['sales','pending','records','reports','settings'].find(tab => {
-        const key = ({pending:'orders'})[tab] || tab;
+      const firstAllowed = ['pos','pending','records','reports','settings'].find(tab => {
+        const key = ({pos:'sales',pending:'orders'})[tab] || tab;
         return !!currentPermissions[key] && (currentUserRole.deviceMode !== 'cashier_only' || ['sales','pending'].includes(tab));
       }) || 'sales';
       if (!document.getElementById('view-' + firstAllowed)?.classList.contains('active')) {
