@@ -200,7 +200,7 @@ jobs:
               styles = """
           <style>
             .actions{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:14px!important}
-            .actions .action{display:flex!important;width:100%!important;min-height:88px!important;max-width:none!important;align-items:center!important}
+            .actions .action{display:flex!important;width:100%!important;height:88px!important;min-height:88px!important;max-width:none!important;align-items:center!important;overflow:hidden!important}.actions .action small{display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
             #freshlyOrdersExpensesEntry:active{transform:scale(.985)}
           </style>
           """
