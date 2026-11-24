@@ -6,10 +6,10 @@
 <link rel="manifest" href="manifest.json">
 <title>FRESHLY & PREMIER - POS Cashier</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<!-- Firebase App & Database SDKs -->
+<!-- Firebase compat SDKs: App must load first, then Auth and Database. -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <script src="offline-bridge.js"></script>
 
 <style>
@@ -560,6 +560,15 @@
   appId: "1:92150322225:web:ced60779ef510197863110",
   measurementId: "G-E4CRKEHSXF"
 };
+  if (!window.firebase || typeof firebase.initializeApp !== 'function') {
+    throw new Error('Firebase App SDK لم يتم تحميله. تحقق من اتصال الإنترنت.');
+  }
+  if (typeof firebase.auth !== 'function') {
+    throw new Error('Firebase Authentication SDK لم يتم تحميله. أعد فتح التطبيق بعد الاتصال بالإنترنت.');
+  }
+  if (typeof firebase.database !== 'function') {
+    throw new Error('Firebase Realtime Database SDK لم يتم تحميله.');
+  }
   if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
   const rtdb = firebase.database();
 
