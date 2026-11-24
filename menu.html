@@ -817,6 +817,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const menuNow = new Date();
   menuOrderDateInput.value = localDateValue(menuNow);
   menuOrderTimeInput.value = localTimeValue(menuNow);
+  // Keep the default order timestamp live; preserve a value while the user is actively editing it.
+  let lastLiveMenuTime = menuOrderTimeInput.value;
+  setInterval(() => {
+    const liveNow = new Date();
+    if (document.activeElement !== menuOrderTimeInput) {
+      const current = menuOrderTimeInput.value;
+      if (!current || current === lastLiveMenuTime) {
+        menuOrderTimeInput.value = localTimeValue(liveNow);
+        lastLiveMenuTime = menuOrderTimeInput.value;
+      } else {
+        lastLiveMenuTime = current;
+      }
+    }
+    if (document.activeElement !== menuOrderDateInput) {
+      const currentDate = menuOrderDateInput.value;
+      if (!currentDate || currentDate === localDateValue(new Date(Date.now() - 86400000))) {
+        menuOrderDateInput.value = localDateValue(liveNow);
+      }
+    }
+  }, 1000);
+  menuOrderTimeInput.addEventListener('change', () => { lastLiveMenuTime = menuOrderTimeInput.value; });
   function getSelectedOrderDateTime() {
     return {
       date: menuOrderDateInput.value || localDateValue(new Date()),
