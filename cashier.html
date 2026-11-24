@@ -915,8 +915,11 @@
       if (!document.getElementById('view-' + firstAllowed)?.classList.contains('active')) {
         if (typeof switchTab === 'function') switchTab(firstAllowed);
       }
+      // Let the remaining script initialize shared state before the first render.
+      await Promise.resolve();
       renderHeldOrders();
     } catch (err) {
+      console.error('FRESHLY account initialization failed:', err);
       document.body.classList.add('auth-locked');
       loginMessage.textContent = err.message === 'ACCOUNT_NOT_ACTIVE' ? 'هذا الحساب موقوف. تواصل مع المدير.' : 'الحساب غير مضاف للنظام أو تعذر التحقق من الصلاحيات.';
       await firebase.auth().signOut();
