@@ -839,11 +839,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('checkoutBtn').addEventListener('click', () => {
     if (state.cart.length === 0) return alert('الفاتورة فارغة');
     const customer = document.getElementById('customerNameInput').value.trim() || 'كاشير عام';
-    const currencyTotals=cartCurrencyTotals(state.cart);
+    const originalCurrencyTotals=cartCurrencyTotals(state.cart);
+    const currencyTotals={...originalCurrencyTotals};
     const discountPercent=Number(document.getElementById('discountInput').value||0);
     const taxPercent=document.getElementById('hideTaxCheckbox').checked?0:Number(document.getElementById('taxInput').value||0);
     Object.keys(currencyTotals).forEach(c=>{currencyTotals[c]=(currencyTotals[c]*(1-discountPercent/100))*(1+taxPercent/100);});
     const subtotal=Object.values(currencyTotals).reduce((sum,value)=>sum+value,0);
+    const originalSubtotal=Object.values(originalCurrencyTotals).reduce((sum,value)=>sum+value,0);
 
     const sale = {
       id: 'SALE-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
@@ -856,7 +858,8 @@ document.addEventListener('DOMContentLoaded', () => {
       cart: JSON.parse(JSON.stringify(state.cart)),
       total: subtotal,
       netTotal: subtotal,
-      originalTotal: subtotal,
+      originalTotal: originalSubtotal,
+      originalCurrencyTotals,
       currencyTotals,
       netCurrencyTotals:{...currencyTotals},
       currency:Object.keys(currencyTotals).filter(c=>currencyTotals[c]>0).length>1?'MIXED':(Object.keys(currencyTotals).find(c=>currencyTotals[c]>0)||state.currency||'EGP'),
@@ -1210,7 +1213,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.viewSaleInvoice = function(id) {
     const s = getSaleById(id); if (!s) return;
     const lines = (s.cart || []).map(c => `${c.name || c.itemName || c.itemId || c.id || 'صنف'} × ${c.qty || 1} — ${formatAmount(c.price || 0,c.currency||s.currency||'EGP')}`).join('\n');
-    const gross=s.currencyTotals?formatCurrencyTotals(s.currencyTotals):formatAmount(s.originalTotal??s.total,s.currency||'EGP');
+    const gross=s.originalCurrencyTotals?formatCurrencyTotals(s.originalCurrencyTotals):(s.currencyTotals?formatCurrencyTotals(s.currencyTotals):formatAmount(s.originalTotal??s.total,s.currency||'EGP'));
     const net=s.netCurrencyTotals?formatCurrencyTotals(s.netCurrencyTotals):formatAmount(s.netTotal??s.total,s.currency||'EGP');
     alert(`فاتورة ${s.id}\nالعميل/الغرفة/الطاولة: ${s.customer || ''}\nالتاريخ: ${s.date || ''}\nطريقة الدفع: ${s.paymentMethod || ''}\nالكاشير: ${s.cashier || ''}\n${lines}\nالإجمالي الأصلي: ${gross}\nالصافي الحالي: ${net}\n${s.cancelled?'ملغاة':''}`);
   };
