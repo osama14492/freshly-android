@@ -647,9 +647,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!name || !email || password.length < 6) { message.textContent = 'أدخل الاسم والبريد وكلمة مرور لا تقل عن 6 أحرف.'; return; }
     btn.disabled = true; message.textContent = 'جارٍ إنشاء الحساب...';
     let secondary = null;
+    let createdUser = null;
+    let roleSaved = false;
     try {
       secondary = firebase.apps.find(app => app.name === 'FRESHLY_STAFF_CREATION') || firebase.initializeApp(firebaseConfig, 'FRESHLY_STAFF_CREATION');
       const credential = await secondary.auth().createUserWithEmailAndPassword(email, password);
+      createdUser = credential.user;
       const permissions = {};
       document.querySelectorAll('.staff-perm').forEach(box => permissions[box.value] = box.checked);
       const role = staffRoleSelect.value;
@@ -658,6 +661,8 @@ document.addEventListener('DOMContentLoaded', () => {
         name, email, role, active:true, deviceMode, permissions,
         createdAt: new Date().toISOString(), createdBy: managerUid
       });
+      roleSaved = true;
+      createdUser = null;
       await secondary.auth().signOut();
       message.textContent = 'تم إنشاء الحساب وحفظ صلاحياته. أرسل بيانات الدخول للموظف بشكل آمن.';
       document.getElementById('staffName').value = '';
@@ -665,7 +670,13 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('staffPassword').value = '';
       renderStaffAccounts();
     } catch (error) {
-      message.textContent = error.code === 'auth/email-already-in-use' ? 'هذا البريد مسجل بالفعل.' : 'تعذر إنشاء الحساب: تحقق من الاتصال وإعدادات Firebase.';
+      if (createdUser && !roleSaved) {
+        try { await createdUser.delete(); }
+        catch (rollbackError) { console.error('Staff account rollback failed:', rollbackError); }
+      }
+      message.textContent = error.code === 'auth/email-already-in-use'
+        ? 'هذا البريد مسجل بالفعل.'
+        : (roleSaved ? 'تم حفظ الحساب، لكن تعذر إنهاء جلسة الإنشاء. أعد فتح إدارة الحسابات للتحقق.' : 'تعذر إنشاء الحساب أو حفظ صلاحياته. إذا تم إنشاء حساب الدخول ولم يكتمل الحفظ، جرت محاولة إلغائه تلقائيًا.');
       try { if (secondary) await secondary.auth().signOut(); } catch (_) {}
     } finally { btn.disabled = false; }
   });
