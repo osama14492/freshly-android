@@ -6,7 +6,8 @@
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || auth.uid === 'AiQ3H3qAsRdI4HMvfDfXgQCzplj1')",
         ".write": "auth != null && auth.uid === 'AiQ3H3qAsRdI4HMvfDfXgQCzplj1'"
-      }
+      },
+      ".read": "auth != null && auth.uid === 'AiQ3H3qAsRdI4HMvfDfXgQCzplj1'"
     },
     "pendingOrders": {
       ".read": "auth != null && (auth.uid === 'AiQ3H3qAsRdI4HMvfDfXgQCzplj1' || (root.child('userRoles').child(auth.uid).child('active').val() === true && root.child('userRoles').child(auth.uid).child('permissions').child('orders').val() === true))",
