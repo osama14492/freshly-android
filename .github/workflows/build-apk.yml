@@ -8,6 +8,7 @@ on:
       - '.github/workflows/build-apk.yml'
       - 'cashier.html'
       - 'menu.html'
+      - 'orders-expenses.html'
       - 'FRESHLY_SECURE_MainActivity.kt'
       - 'FRESHLY_BACKUP_RESTORE_BLOCK.js'
 
@@ -23,10 +24,11 @@ jobs:
       - name: Extract Android project without overwriting current web sources
         run: |
           mkdir -p /tmp/freshly-current-sources
-          cp cashier.html menu.html FRESHLY_SECURE_MainActivity.kt FRESHLY_BACKUP_RESTORE_BLOCK.js /tmp/freshly-current-sources/
+          cp cashier.html menu.html orders-expenses.html FRESHLY_SECURE_MainActivity.kt FRESHLY_BACKUP_RESTORE_BLOCK.js /tmp/freshly-current-sources/
           unzip -o FRESHLY_ANDROID_UPLOAD-1.zip -d .
           cp /tmp/freshly-current-sources/cashier.html .
           cp /tmp/freshly-current-sources/menu.html .
+          cp /tmp/freshly-current-sources/orders-expenses.html .
           cp /tmp/freshly-current-sources/FRESHLY_SECURE_MainActivity.kt .
           cp /tmp/freshly-current-sources/FRESHLY_BACKUP_RESTORE_BLOCK.js .
       - name: Install password and biometric protection
@@ -181,6 +183,44 @@ jobs:
               if not path.is_file() or path.stat().st_size < 10000:
                   raise SystemExit("Firebase SDK asset missing or unexpectedly small: " + name)
           print("Bundled Firebase App/Auth/Database compat SDKs into the APK assets.")
+          PY
+      - name: Install independent orders and expenses page in the app
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/main/assets
+          cp orders-expenses.html app/src/main/assets/orders-expenses.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/assets/home.html")
+          s = p.read_text()
+          marker = "<!-- FRESHLY_ORDERS_EXPENSES_ENTRY -->"
+          if marker not in s:
+              block = """
+          <!-- FRESHLY_ORDERS_EXPENSES_ENTRY -->
+          <style>
+            #freshlyOrdersExpensesEntry{display:flex;align-items:center;justify-content:center;gap:9px;width:calc(100% - 28px);max-width:410px;margin:14px auto 24px;padding:14px 12px;border:1px solid rgba(212,175,55,.55);border-radius:13px;background:linear-gradient(135deg,#1c212d,#151922);color:#fcf6ba;text-decoration:none;font-weight:800;font-size:14px;box-shadow:0 5px 18px rgba(0,0,0,.25)}
+            #freshlyOrdersExpensesEntry:active{transform:scale(.985)}
+          </style>
+          <a id="freshlyOrdersExpensesEntry" href="orders-expenses.html">🧾 الطلبية والمصروفات الشخصية</a>
+          <script>
+          (function(){
+            var link=document.getElementById('freshlyOrdersExpensesEntry');
+            function label(){link.textContent=(document.documentElement.lang||'ar').toLowerCase().startsWith('en')?'🧾 Orders & Personal Expenses':'🧾 الطلبية والمصروفات الشخصية';}
+            label();
+            new MutationObserver(label).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
+          })();
+          </script>
+          """
+              if "</body>" not in s:
+                  raise SystemExit("Home page closing body tag not found; refusing to alter the home screen.")
+              s = s.replace("</body>", block + "\n</body>", 1)
+              p.write_text(s)
+          if not p.exists() or "freshlyOrdersExpensesEntry" not in p.read_text():
+              raise SystemExit("Orders and expenses entry was not installed.")
+          page = Path("app/src/main/assets/orders-expenses.html")
+          if not page.is_file() or page.stat().st_size < 10000:
+              raise SystemExit("Orders and expenses page is missing or incomplete.")
+          print("Installed the standalone orders and expenses page and its home-screen entry.")
           PY
       - name: Validate cashier JavaScript syntax
         run: |
