@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c0e13">
+<title>FRESHLY | الطلبية والمصروفات الشخصية</title>
+<style>
+:root{--bg:#0c0e13;--panel:#151922;--card:#1c212d;--input:#10131a;--gold:#d4af37;--gold-light:#fcf6ba;--border:rgba(212,175,55,.35);--line:#2a303f;--text:#f3f4f6;--muted:#9ca3af;--green:#10b981;--red:#ef4444}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,Tahoma,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:#07080b;color:var(--text)}
+body{display:flex;justify-content:center;align-items:stretch}
+button,input,select{font:inherit}
+.phone{width:100%;max-width:430px;min-height:100dvh;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;border-inline:1px solid var(--border)}
+header{background:var(--panel);border-bottom:1px solid var(--border);padding:12px;flex-shrink:0}
+.head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.brand{font-weight:900;letter-spacing:.5px;color:var(--gold-light);font-size:1rem}
+.subtitle{font-size:.65rem;color:var(--muted);margin-top:3px}
+.lang{border:1px solid var(--border);background:var(--card);color:var(--gold-light);padding:7px 10px;border-radius:9px;font-weight:800}
+.datebar{margin-top:10px;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);padding:7px 9px;border-radius:9px;font-size:.75rem;color:var(--gold-light)}
+.datebar input{width:100%;background:var(--input);color:var(--text);border:1px solid var(--line);padding:6px;border-radius:6px;color-scheme:dark}
+main{flex:1;overflow:auto;padding:11px;display:flex;flex-direction:column;gap:10px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.tab{padding:11px 6px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--gold-light);font-weight:800;font-size:.82rem}
+.tab.active{background:linear-gradient(135deg,#bf953f,#fcf6ba 35%,#d4af37 65%,#aa771c);color:#10131a;border-color:transparent}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:11px;display:flex;flex-direction:column;gap:9px}
+h2{font-size:.95rem;color:var(--gold-light)}
+.hint{font-size:.68rem;color:var(--muted);line-height:1.5}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field.full{grid-column:1/-1}
+label{font-size:.69rem;color:var(--gold-light);font-weight:700}
+input,select{width:100%;min-width:0;background:var(--input);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:.8rem;outline:none}
+input:focus,select:focus{border-color:var(--gold)}
+select option{background:var(--panel)}
+.actions{display:flex;gap:7px}
+.btn{border:0;border-radius:9px;padding:10px 12px;font-weight:800;font-size:.78rem;cursor:pointer}
+.primary{background:linear-gradient(135deg,#bf953f,#fcf6ba 35%,#d4af37 65%,#aa771c);color:#10131a;flex:1}
+.secondary{background:var(--card);border:1px solid var(--line);color:var(--text)}
+.danger{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.35);color:#f87171}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:9px 6px;text-align:center;min-width:0}
+.stat small{display:block;color:var(--muted);font-size:.62rem;margin-bottom:5px}
+.stat strong{font-size:.85rem;color:var(--gold-light);overflow-wrap:anywhere}
+.stat .cur{font-size:.62rem;color:var(--muted);font-weight:600}
+.currency-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.currency-box{background:var(--input);border:1px solid var(--line);border-radius:8px;padding:8px 5px;text-align:center}
+.currency-box b{display:block;color:var(--gold-light);font-size:.76rem;overflow-wrap:anywhere}
+.currency-box span{font-size:.62rem;color:var(--muted)}
+.record{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:7px}
+.record-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.record-name{font-weight:800;font-size:.82rem;overflow-wrap:anywhere}
+.record-meta{font-size:.65rem;color:var(--muted);margin-top:3px}
+.amount{color:var(--gold-light);font-weight:900;font-size:.85rem;white-space:nowrap}
+.record-actions{display:flex;gap:6px;justify-content:flex-end}
+.record-actions button{padding:6px 9px;font-size:.68rem}
+.empty{text-align:center;color:var(--muted);padding:18px 8px;font-size:.78rem}
+.section-title{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.count{color:var(--muted);font-size:.68rem}
+footer{text-align:center;padding:9px;color:#687080;font-size:.6rem;border-top:1px solid var(--line)}
+.hidden{display:none!important}
+@media(max-width:350px){.stats,.currency-totals{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}}
+@media print{html,body{background:#fff;color:#111}.phone{max-width:none;border:0;background:#fff}.no-print,header .lang,.record-actions{display:none!important}header,main,.panel,.record,.stat,.currency-box{background:#fff!important;color:#111!important;border-color:#bbb!important}h2,label,.brand,.amount,.stat strong,.currency-box b{color:#111!important}.record-meta,.hint,.stat small,.currency-box span{color:#444!important}main{overflow:visible}.panel{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="phone">
+<header>
+ <div class="head">
+  <div><div class="brand">FRESHLY &amp; PREMIER</div><div class="subtitle" data-i18n="pageSub">الطلبية والمصروفات الشخصية</div></div>
+  <button class="lang" id="langBtn" type="button">EN</button>
+ </div>
+ <div class="datebar"><span data-i18n="today">التاريخ</span><input type="date" id="entryDate"></div>
+</header>
+<main>
+ <div class="tabs no-print">
+  <button class="tab active" id="purchaseTab" type="button" data-i18n="purchases">مشتريات الأصناف</button>
+  <button class="tab" id="expenseTab" type="button" data-i18n="personal">مصروفاتي الشخصية</button>
+ </div>
+ <section class="panel" id="formPanel">
+  <h2 id="formTitle">إضافة مشتريات</h2>
+  <p class="hint" id="formHint">سجّل الأصناف التي اشتريتها والمبلغ المدفوع لكل صنف.</p>
+  <form id="entryForm" class="grid">
+   <div class="field full"><label for="description" data-i18n="itemName">اسم الصنف</label><input id="description" maxlength="100" required placeholder="مثال: أكواب ورقية"></div>
+   <div class="field"><label for="quantity" data-i18n="quantity">الكمية (اختياري)</label><input id="quantity" type="number" min="0" step="0.001" inputmode="decimal" placeholder="1"></div>
+   <div class="field"><label for="amount" data-i18n="amount">المبلغ المدفوع</label><input id="amount" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="0.00"></div>
+   <div class="field"><label for="currency" data-i18n="currency">العملة</label><select id="currency"><option value="EGP">EGP - جنيه</option><option value="USD">USD - دولار</option><option value="EUR">EUR - يورو</option></select></div>
+   <div class="field"><label for="date" data-i18n="date">التاريخ</label><input id="date" type="date" required></div>
+   <div class="field full hidden" id="categoryWrap"><label for="category" data-i18n="category">التصنيف</label><select id="category"></select></div>
+   <div class="field full"><label for="notes" data-i18n="notes">ملاحظات (اختياري)</label><input id="notes" maxlength="250" placeholder="..."></div>
+   <div class="field full actions"><button class="btn primary" id="saveBtn" type="submit" data-i18n="save">حفظ السجل</button><button class="btn secondary hidden" id="cancelEdit" type="button" data-i18n="cancel">إلغاء</button></div>
+  </form>
+ </section>
+ <section class="panel">
+  <div class="section-title"><h2 data-i18n="summary">الإجماليات</h2><span class="count" data-i18n="separateCurrency">كل عملة منفصلة</span></div>
+  <div class="stats">
+   <div class="stat"><small data-i18n="todayTotal">إجمالي اليوم</small><strong id="todayCount">0</strong></div>
+   <div class="stat"><small data-i18n="monthTotal">إجمالي الشهر</small><strong id="monthCount">0</strong></div>
+   <div class="stat"><small data-i18n="records">عدد السجلات</small><strong id="recordCount">0</strong></div>
+  </div>
+  <div class="currency-totals" id="currencyTotals"></div>
+ </section>
+ <section class="panel">
+  <div class="section-title"><h2 data-i18n="history">السجل</h2><span class="count" id="historyCount"></span></div>
+  <div class="grid no-print">
+   <div class="field"><label for="filterFrom" data-i18n="from">من تاريخ</label><input id="filterFrom" type="date"></div>
+   <div class="field"><label for="filterTo" data-i18n="to">إلى تاريخ</label><input id="filterTo" type="date"></div>
+   <div class="field full"><label for="search" data-i18n="search">بحث</label><input id="search" type="search" data-placeholder="searchHint" placeholder="ابحث باسم الصنف أو الملاحظات"></div>
+  </div>
+  <div class="actions no-print"><button class="btn secondary" id="clearFilters" type="button" data-i18n="clearFilters">مسح التصفية</button><button class="btn secondary" id="printBtn" type="button" data-i18n="print">طباعة السجل</button></div>
+  <div id="records"></div>
+ </section>
+</main>
+<footer>FRESHLY &amp; PREMIER · <span data-i18n="privateLocal">سجلات مستقلة ومحفوظة على هذا الجهاز</span></footer>
+</div>
+<script>
+(()=>{
+'use strict';
+const KEY='freshly_orders_personal_expenses_v1';
+const $=id=>document.getElementById(id);
+const currencies=['EGP','USD','EUR'];
+const words={
+ ar:{pageSub:'الطلبية والمصروفات الشخصية',today:'التاريخ',purchases:'مشتريات الأصناف',personal:'مصروفاتي الشخصية',addPurchase:'إضافة مشتريات',purchaseHint:'سجّل الأصناف التي اشتريتها والمبلغ المدفوع لكل صنف.',addExpense:'إضافة مصروف شخصي',expenseHint:'سجّل مصروفك الشخصي وقيمته وتاريخه.',itemName:'اسم الصنف',expenseName:'بيان المصروف',quantity:'الكمية (اختياري)',amount:'المبلغ المدفوع',currency:'العملة',date:'التاريخ',category:'التصنيف',notes:'ملاحظات (اختياري)',save:'حفظ السجل',update:'حفظ التعديل',cancel:'إلغاء',summary:'الإجماليات',separateCurrency:'كل عملة منفصلة',todayTotal:'إجمالي اليوم',monthTotal:'إجمالي الشهر',records:'عدد السجلات',history:'السجل',from:'من تاريخ',to:'إلى تاريخ',search:'بحث',searchHint:'ابحث باسم الصنف أو الملاحظات',clearFilters:'مسح التصفية',print:'طباعة السجل',privateLocal:'سجلات مستقلة ومحفوظة على هذا الجهاز',noRecords:'لا توجد سجلات حتى الآن.',edit:'تعديل',delete:'حذف',confirmDelete:'هل تريد حذف هذا السجل؟',saved:'تم حفظ السجل',updated:'تم تحديث السجل',purchase:'مشتريات',expense:'مصروف شخصي',food:'طعام ومشروبات',transport:'مواصلات',shopping:'مشتريات شخصية',bills:'فواتير',housing:'سكن',health:'صحة',other:'أخرى',currencyNames:{EGP:'جنيه',USD:'دولار',EUR:'يورو'},invalid:'أدخل البيان والمبلغ بصورة صحيحة.',qty:'الكمية',dateLabel:'التاريخ',notesLabel:'ملاحظات'},
+ en:{pageSub:'Orders & Personal Expenses',today:'Date',purchases:'Item Purchases',personal:'My Personal Expenses',addPurchase:'Add Purchase',purchaseHint:'Record each item you bought and the amount paid.',addExpense:'Add Personal Expense',expenseHint:'Record your personal expense, amount and date.',itemName:'Item name',expenseName:'Expense description',quantity:'Quantity (optional)',amount:'Amount paid',currency:'Currency',date:'Date',category:'Category',notes:'Notes (optional)',save:'Save record',update:'Save changes',cancel:'Cancel',summary:'Totals',separateCurrency:'Each currency separately',todayTotal:'Today total',monthTotal:'Month total',records:'Records',history:'History',from:'From date',to:'To date',search:'Search',searchHint:'Search item or notes',clearFilters:'Clear filters',print:'Print history',privateLocal:'Separate records saved on this device',noRecords:'No records yet.',edit:'Edit',delete:'Delete',confirmDelete:'Delete this record?',saved:'Record saved',updated:'Record updated',purchase:'Purchase',expense:'Personal expense',food:'Food & drinks',transport:'Transport',shopping:'Personal shopping',bills:'Bills',housing:'Housing',health:'Health',other:'Other',currencyNames:{EGP:'EGP',USD:'USD',EUR:'EUR'},invalid:'Enter a description and a valid amount.',qty:'Qty',dateLabel:'Date',notesLabel:'Notes'}
+};
+let lang='ar',mode='purchase',editingId=null,entries=load();
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?v:[]}catch(e){return[]}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(entries))}
+function t(k){return words[lang][k]||k}
+function today(){const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
+function money(n){return Number(n||0).toLocaleString(lang==='ar'?'ar-EG':'en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function setMode(next){mode=next;editingId=null;$('entryForm').reset();$('date').value=$('entryDate').value||today();$('quantity').value='';$('notes').value='';$('purchaseTab').classList.toggle('active',mode==='purchase');$('expenseTab').classList.toggle('active',mode==='expense');$('categoryWrap').classList.toggle('hidden',mode==='purchase');$('formTitle').textContent=t(mode==='purchase'?'addPurchase':'addExpense');$('formHint').textContent=t(mode==='purchase'?'purchaseHint':'expenseHint');$('description').previousElementSibling.textContent=t(mode==='purchase'?'itemName':'expenseName');$('quantity').closest('.field').classList.toggle('hidden',mode==='expense');$('saveBtn').textContent=t('save');$('cancelEdit').classList.add('hidden');render()}
+function applyLang(){document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';document.title='FRESHLY | '+t('pageSub');document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;el.textContent=t(k)});document.querySelectorAll('[data-placeholder]').forEach(el=>el.placeholder=t(el.dataset.placeholder));$('langBtn').textContent=lang==='ar'?'EN':'عربي';fillCategories();$('formTitle').textContent=t(mode==='purchase'?'addPurchase':'addExpense');$('formHint').textContent=t(mode==='purchase'?'purchaseHint':'expenseHint');$('description').previousElementSibling.textContent=t(mode==='purchase'?'itemName':'expenseName');$('saveBtn').textContent=t(editingId?'update':'save');render()}
+function fillCategories(){const c=$('category'),old=c.value;const opts=['food','transport','shopping','bills','housing','health','other'];c.innerHTML=opts.map(k=>'<option value="'+k+'">'+t(k)+'</option>').join('');c.value=old||'other'}
+function totals(list){return currencies.map(c=>({currency:c,total:list.filter(x=>x.currency===c).reduce((s,x)=>s+Number(x.amount||0),0)}))}
+function render(){
+ const date=$('entryDate').value||today(),month=date.slice(0,7);
+ const own=entries.filter(x=>x.type===mode);
+ const todayRows=own.filter(x=>x.date===date),monthRows=own.filter(x=>(x.date||'').startsWith(month));
+ const fmt=list=>totals(list).map(x=>x.currency+' '+money(x.total)).join(' · ');
+ $('todayCount').textContent=fmt(todayRows);$('monthCount').textContent=fmt(monthRows);$('recordCount').textContent=own.length;
+ $('currencyTotals').innerHTML=totals(own).map(x=>'<div class="currency-box"><b>'+money(x.total)+' '+x.currency+'</b><span>'+t('currencyNames')[x.currency]+'</span></div>').join('');
+ const from=$('filterFrom').value,to=$('filterTo').value,q=$('search').value.trim().toLocaleLowerCase();
+ const filtered=own.filter(x=>(!from||x.date>=from)&&(!to||x.date<=to)&&(!q||(x.description+' '+(x.notes||'')).toLocaleLowerCase().includes(q))).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
+ $('historyCount').textContent=filtered.length+' / '+own.length;
+ $('records').innerHTML=filtered.length?filtered.map(x=>'<article class="record"><div class="record-top"><div><div class="record-name">'+esc(x.description)+'</div><div class="record-meta">'+esc(x.date)+' · '+(x.type==='purchase'?t('purchase'):t('expense'))+(x.category?' · '+t(x.category):'')+(x.quantity?' · '+t('qty')+': '+esc(String(x.quantity)):'')+'</div></div><div class="amount">'+money(x.amount)+' '+x.currency+'</div></div>'+(x.notes?'<div class="record-meta">'+esc(x.notes)+'</div>':'')+'<div class="record-actions no-print"><button class="btn secondary" data-edit="'+x.id+'">'+t('edit')+'</button><button class="btn danger" data-delete="'+x.id+'">'+t('delete')+'</button></div></article>').join(''):'<div class="empty">'+t('noRecords')+'</div>';
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function resetForm(){editingId=null;$('entryForm').reset();$('date').value=$('entryDate').value||today();$('quantity').value='';$('notes').value='';$('saveBtn').textContent=t('save');$('cancelEdit').classList.add('hidden')}
+$('purchaseTab').addEventListener('click',()=>setMode('purchase'));$('expenseTab').addEventListener('click',()=>setMode('expense'));
+$('langBtn').addEventListener('click',()=>{lang=lang==='ar'?'en':'ar';applyLang()});
+$('entryDate').value=today();$('date').value=today();
+$('entryDate').addEventListener('change',()=>{if(!editingId)$('date').value=$('entryDate').value;render()});
+$('entryForm').addEventListener('submit',e=>{e.preventDefault();const description=$('description').value.trim(),amount=Number($('amount').value),date=$('date').value;if(!description||!Number.isFinite(amount)||amount<=0||!date){alert(t('invalid'));return}
+ const data={id:editingId||('r'+Date.now()+Math.random().toString(16).slice(2,7)),type:mode,description,quantity:mode==='purchase'?$('quantity').value:'',amount,currency:$('currency').value,date,category:mode==='expense'?$('category').value:'',notes:$('notes').value.trim(),createdAt:editingId?(entries.find(x=>x.id===editingId)||{}).createdAt||Date.now():Date.now()};
+ if(editingId){entries=entries.map(x=>x.id===editingId?data:x)}else entries.push(data);persist();resetForm();render();});
+$('cancelEdit').addEventListener('click',resetForm);
+$('records').addEventListener('click',e=>{const edit=e.target.closest('[data-edit]'),del=e.target.closest('[data-delete]');if(edit){const x=entries.find(v=>v.id===edit.dataset.edit);if(!x)return;mode=x.type;$('purchaseTab').classList.toggle('active',mode==='purchase');$('expenseTab').classList.toggle('active',mode==='expense');$('categoryWrap').classList.toggle('hidden',mode==='purchase');$('quantity').closest('.field').classList.toggle('hidden',mode==='expense');$('formTitle').textContent=t(mode==='purchase'?'addPurchase':'addExpense');$('formHint').textContent=t(mode==='purchase'?'purchaseHint':'expenseHint');$('description').previousElementSibling.textContent=t(mode==='purchase'?'itemName':'expenseName');editingId=x.id;$('description').value=x.description;$('quantity').value=x.quantity||'';$('amount').value=x.amount;$('currency').value=x.currency;$('date').value=x.date;$('category').value=x.category||'other';$('notes').value=x.notes||'';$('saveBtn').textContent=t('update');$('cancelEdit').classList.remove('hidden');$('formPanel').scrollIntoView({behavior:'smooth',block:'start'})}if(del){if(!confirm(t('confirmDelete')))return;entries=entries.filter(x=>x.id!==del.dataset.delete);if(editingId===del.dataset.delete)resetForm();persist();render()}});
+['filterFrom','filterTo','search'].forEach(id=>$(id).addEventListener('input',render));
+$('clearFilters').addEventListener('click',()=>{$('filterFrom').value='';$('filterTo').value='';$('search').value='';render()});
+$('printBtn').addEventListener('click',()=>window.print());
+fillCategories();setMode('purchase');applyLang();
+})();
+</script>
+</body>
+</html>
