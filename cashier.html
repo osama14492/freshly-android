@@ -692,7 +692,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.view-section').forEach(view => {
         const tab = view.id.replace('view-','');
         const key = ({pos:'sales',pending:'orders',records:'records',reports:'reports',settings:'settings'})[tab] || tab;
-        const allowed = isManager || (!!currentPermissions[key] && (currentUserRole.deviceMode !== 'cashier_only' || ['sales','pending'].includes(tab)));
+        const allowed = isManager || (!!currentPermissions[key] && (currentUserRole.deviceMode !== 'cashier_only' || ['pos','pending'].includes(tab)));
         if (!allowed) view.classList.remove('active');
       });
       if (!isManager) {
@@ -700,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else renderStaffAccounts();
       const firstAllowed = ['pos','pending','records','reports','settings'].find(tab => {
         const key = ({pos:'sales',pending:'orders'})[tab] || tab;
-        return !!currentPermissions[key] && (currentUserRole.deviceMode !== 'cashier_only' || ['sales','pending'].includes(tab));
+        return !!currentPermissions[key] && (currentUserRole.deviceMode !== 'cashier_only' || ['pos','pending'].includes(tab));
       }) || 'sales';
       if (!document.getElementById('view-' + firstAllowed)?.classList.contains('active')) {
         if (typeof switchTab === 'function') switchTab(firstAllowed);
