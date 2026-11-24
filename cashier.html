@@ -516,6 +516,10 @@ document.addEventListener('DOMContentLoaded', () => {
     recordsWorkspace.innerHTML = '';
     if (invoiceHistoryPanel) recordsWorkspace.appendChild(invoiceHistoryPanel);
     if (custodyManagementPanel) recordsWorkspace.appendChild(custodyManagementPanel);
+    const custodyLedgerPanel = document.createElement('div');
+    custodyLedgerPanel.className = 'panel-box';
+    custodyLedgerPanel.innerHTML = '<h4 style="font-size:.82rem;color:var(--gold-light);margin-bottom:7px;">📒 سجل العهدة المسجلة</h4><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>التاريخ</th><th>المبلغ</th><th>إجراء</th></tr></thead><tbody id="custodyHistoryBody"></tbody></table></div>';
+    recordsWorkspace.appendChild(custodyLedgerPanel);
   }
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -1521,6 +1525,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('custodyAmountInput').value=exists?Number(state.custodyByDate[d]||0):'';
     document.getElementById('custodyCurrencyInput').value=(state.custodyCurrencyByDate||{})[d]||'EGP';
   }
+  function renderCustodyHistory(){
+    const host=document.getElementById('custodyHistoryBody');
+    if(!host)return;
+    const dates=Object.keys(state.custodyByDate||{}).sort().reverse();
+    host.innerHTML=dates.length?dates.map(d=>{
+      const currency=(state.custodyCurrencyByDate||{})[d]||'EGP';
+      return '<tr><td>'+d+'</td><td>'+formatAmount(state.custodyByDate[d],currency)+'</td><td><button type="button" class="btn btn-dark" style="padding:4px 8px" data-custody-date="'+d+'">تعديل</button></td></tr>';
+    }).join(''):'<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">لا توجد عهد مسجلة</td></tr>';
+  }
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-custody-date]');
+    if(!btn)return;
+    document.getElementById('custodyDateInput').value=btn.dataset.custodyDate;
+    loadCustodyForDate();
+  });
   document.getElementById('custodyDateInput').addEventListener('change',loadCustodyForDate);
   document.getElementById('saveCustodyBtn').addEventListener('click', () => {
     const d=document.getElementById('custodyDateInput').value||todayStr;
@@ -1529,7 +1548,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.custodyByDate[d]=amount;
     state.custodyCurrencyByDate=state.custodyCurrencyByDate||{};
     state.custodyCurrencyByDate[d]=document.getElementById('custodyCurrencyInput').value||'EGP';
-    persistState();renderReports();alert('تم حفظ / تعديل العهدة بنجاح');
+    persistState();renderReports();renderCustodyHistory();alert('تم حفظ / تعديل العهدة بنجاح');
   });
   document.getElementById('deleteCustodyBtn').addEventListener('click',()=>{
     const d=document.getElementById('custodyDateInput').value||todayStr;
@@ -1537,7 +1556,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(!confirm('تأكيد حذف عهدة يوم '+d+'؟'))return;
     delete state.custodyByDate[d];
     if(state.custodyCurrencyByDate)delete state.custodyCurrencyByDate[d];
-    persistState();loadCustodyForDate();renderReports();alert('تم حذف العهدة المحددة');
+    persistState();loadCustodyForDate();renderReports();renderCustodyHistory();alert('تم حذف العهدة المحددة');
   });
 
   document.getElementById('addExpenseBtn').addEventListener('click', () => {
@@ -1592,6 +1611,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('saleDateInput').value = todayStr;
   document.getElementById('custodyDateInput').value = todayStr;
   loadCustodyForDate();
+  renderCustodyHistory();
   document.getElementById('expenseDateInput').value = todayStr;
   document.getElementById('customStartDate').value = todayStr;
   document.getElementById('customEndDate').value = todayStr;
