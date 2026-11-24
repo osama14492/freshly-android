@@ -776,12 +776,13 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    let subtotal = 0;
+    const subtotal = {EGP:0,USD:0,EUR:0,GBP:0};
     list.innerHTML = state.cart.map((c, idx) => {
       const item = state.items.find(i => i.id === c.itemId || i.id === c.id);
       const title = item ? getItemTitle(item) : (c.name || 'صنف من المنيو');
       const unit = c.price !== undefined ? Number(c.price || 0) : (item ? getUnitPrice(item) : 0);
-      subtotal += unit * c.qty;
+      const lineCurrency=String(c.currency||state.currency||'EGP').toUpperCase();
+      if(Object.prototype.hasOwnProperty.call(subtotal,lineCurrency))subtotal[lineCurrency]+=unit*c.qty;
 
       return `
         <div class="cart-row-detailed">
@@ -804,12 +805,12 @@ document.addEventListener('DOMContentLoaded', () => {
             </select>
           </div>
           <div class="cart-row-bottom">
-            <span style="color:var(--text-muted); font-size:0.7rem;">الفردي: ${formatMoney(unit)}</span>
+            <span style="color:var(--text-muted); font-size:0.7rem;">الفردي: ${formatAmount(unit,lineCurrency)}</span>
             <div style="display:flex; align-items:center; gap:6px;">
               <button class="qty-btn" onclick="state.cart[${idx}].qty--; if(state.cart[${idx}].qty<=0)state.cart.splice(${idx},1); renderCartFull();">-</button>
               <span style="font-weight:900; color:var(--gold-light);">${c.qty}</span>
               <button class="qty-btn" onclick="state.cart[${idx}].qty++; renderCartFull();">+</button>
-              <span style="color:var(--gold-main); font-weight:900;">${formatMoney(unit * c.qty)}</span>
+              <span style="color:var(--gold-main); font-weight:900;">${formatAmount(unit * c.qty,lineCurrency)}</span>
             </div>
           </div>
         </div>
@@ -818,8 +819,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const disc = Number(document.getElementById('discountInput').value || 0);
     const tax = document.getElementById('hideTaxCheckbox').checked ? 0 : Number(document.getElementById('taxInput').value || 0);
-    const total = (subtotal * (1 - disc / 100)) * (1 + tax / 100);
-    document.getElementById('grandTotalDisplay').textContent = formatMoney(total);
+    const total = {};
+    Object.keys(subtotal).forEach(currency=>{total[currency]=(subtotal[currency]*(1-disc/100))*(1+tax/100);});
+    document.getElementById('grandTotalDisplay').textContent = formatCurrencyTotals(total);
   }
 
   // حذف الصنف من الفاتورة الحالية فقط؛ لا يمس قائمة المنيو أو السجلات المحفوظة.
@@ -835,12 +837,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('checkoutBtn').addEventListener('click', () => {
     if (state.cart.length === 0) return alert('الفاتورة فارغة');
     const customer = document.getElementById('customerNameInput').value.trim() || 'كاشير عام';
-    let subtotal = 0;
-    state.cart.forEach(c => {
-      const item = state.items.find(i => i.id === c.itemId || i.id === c.id);
-      const unit = c.price !== undefined ? Number(c.price || 0) : (item ? getUnitPrice(item) : 0);
-      subtotal += unit * c.qty;
-    });
+    const currencyTotals=cartCurrencyTotals(state.cart);
+    const subtotal=Object.values(currencyTotals).reduce((sum,value)=>sum+value,0);
 
     const sale = {
       id: 'SALE-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
@@ -854,7 +852,9 @@ document.addEventListener('DOMContentLoaded', () => {
       total: subtotal,
       netTotal: subtotal,
       originalTotal: subtotal,
-      currency: state.currency || 'EGP',
+      currencyTotals,
+      netCurrencyTotals:{...currencyTotals},
+      currency:Object.keys(currencyTotals).filter(c=>currencyTotals[c]>0).length>1?'MIXED':(Object.keys(currencyTotals).find(c=>currencyTotals[c]>0)||state.currency||'EGP'),
       paymentMethod: document.getElementById('paymentMethodSelect').value,
       cashier: document.getElementById('cashierNameInput').value.trim(),
       createdAt: new Date().toISOString(),
