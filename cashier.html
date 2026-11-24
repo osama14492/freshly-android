@@ -642,10 +642,10 @@
       await ensureFirebaseReady();
       const loginEmail = document.getElementById('freshlyLoginEmail').value.trim();
       const shouldRemember = !!rememberLogin?.checked;
-      await firebase.auth().setPersistence(
-        shouldRemember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION
-      );
-      await firebase.auth().signInWithEmailAndPassword(
+      const auth = firebase.auth();
+      // Firebase Auth compat accepts persistence names directly; do not depend on Auth.Persistence exports.
+      await auth.setPersistence(shouldRemember ? 'local' : 'session');
+      await auth.signInWithEmailAndPassword(
         loginEmail,
         document.getElementById('freshlyLoginPassword').value
       );
