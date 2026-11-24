@@ -112,6 +112,21 @@ jobs:
           echo '--- packaged web assets ---'
           ls -lah app/src/main/assets
           ls -lah app/src/main/assets/images
+      - name: Validate cashier JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path('cashier.html').read_text()
+          scripts = re.findall(r'<script\b([^>]*)>(.*?)</script\s*>', html, flags=re.I | re.S)
+          inline = [body for attrs, body in scripts if not re.search(r'\bsrc\s*=', attrs, flags=re.I) and body.strip()]
+          if not inline:
+              raise SystemExit('No inline cashier JavaScript blocks found')
+          for index, body in enumerate(inline, 1):
+              Path(f'/tmp/freshly-cashier-{index}.js').write_text(body)
+          print(f'Extracted {len(inline)} inline cashier JavaScript blocks for syntax validation.')
+          PY
+          for source in /tmp/freshly-cashier-*.js; do node --check "$source"; done
       - name: Align Java and Kotlin JVM targets
         run: |
           python3 - <<'PY'
