@@ -704,7 +704,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function openMenuItemPicker(target, saleId) {
     pickerTarget = target; pickerSaleId = saleId || null; pickerCategory = 'all';
     const sale = saleId ? getSaleById(saleId) : null;
-    pickerDraft = sale ? (sale.cart || []).map(c => { const item=getPublicMenu().items.find(i=>String(i.id)===String(c.itemId||c.id))||state.items.find(i=>i.id===c.itemId||i.id===c.id); return {...c, itemId:c.itemId||c.id||'', name:c.name||c.itemName||menuName(item), qty:Number(c.qty||1), price:c.price!==undefined?Number(c.price):getUnitPrice(item)}; }) : (state.cart || []).map(c => { const item=state.items.find(i=>i.id===c.itemId||i.id===c.id)||getPublicMenu().items.find(i=>i.id===c.itemId||i.id===c.id); return {...c, itemId:c.itemId||c.id||'', name:c.name||menuName(item), qty:Number(c.qty||1), price:c.price!==undefined?Number(c.price):getUnitPrice(item)}; });
+    pickerDraft = sale ? (sale.cart || []).map(c => { const item=getPublicMenu().items.find(i=>String(i.id)===String(c.itemId||c.id))||state.items.find(i=>i.id===c.itemId||i.id===c.id); return {...c, itemId:c.itemId||c.id||'', name:c.name||c.itemName||menuName(item), qty:Number(c.qty||1), price:c.price!==undefined?Number(c.price):getUnitPrice(item), currency:c.currency||(sale.currency&&sale.currency!=='MIXED'?sale.currency:state.currency)}; }) : (state.cart || []).map(c => { const item=state.items.find(i=>i.id===c.itemId||i.id===c.id)||getPublicMenu().items.find(i=>i.id===c.itemId||i.id===c.id); return {...c, itemId:c.itemId||c.id||'', name:c.name||menuName(item), qty:Number(c.qty||1), price:c.price!==undefined?Number(c.price):getUnitPrice(item), currency:c.currency||state.currency}; });
     let modal = document.getElementById('menuItemPickerModal');
     if (!modal) {
       modal = document.createElement('div'); modal.id='menuItemPickerModal';
@@ -713,9 +713,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b id="pickerTitle">اختيار صنف من المنيو</b><button type="button" class="btn btn-dark" id="pickerClose">✕</button></div>
         <div id="pickerCategories" style="display:flex;gap:6px;overflow:auto;padding:10px 0;flex-wrap:wrap"></div>
         <div id="pickerItems" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:190px;overflow:auto"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:12px 0">
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:12px 0">
           <label style="font-size:12px">الكمية<input id="pickerQty" type="number" min="1" value="1" class="input-field" style="width:100%"></label>
           <label style="font-size:12px">السعر للوحدة<input id="pickerPrice" type="number" min="0" step="0.01" class="input-field" style="width:100%"></label>
+          <label style="font-size:12px">عملة الصنف<select id="pickerCurrency" class="input-field" style="width:100%"><option value="EGP">EGP</option><option value="USD">USD $</option><option value="EUR">EUR €</option><option value="GBP">GBP</option></select></label>
           <button type="button" class="btn btn-gold" id="pickerAdd" style="align-self:end">إضافة الصنف</button>
         </div>
         <div style="font-weight:800;color:#d4af37;margin:8px 0">أصناف الفاتورة</div><div id="pickerDraftRows"></div>
@@ -726,8 +727,8 @@ document.addEventListener('DOMContentLoaded', () => {
       modal.querySelector('#pickerAdd').onclick=()=>{
         const id=modal.dataset.selectedId, item=getPublicMenu().items.find(x=>String(x.id)===String(id));
         if(!item)return alert('اختر صنفًا من القائمة أولاً');
-        const qty=Math.max(1,Number(modal.querySelector('#pickerQty').value)||1), price=Math.max(0,Number(modal.querySelector('#pickerPrice').value)||0);
-        pickerDraft.push({itemId:item.id,id:item.id,name:menuName(item),qty,price,size:'كبير',sugar:'عادي',ice:'وسط',note:''}); renderPickerDraft();
+        const qty=Math.max(1,Number(modal.querySelector('#pickerQty').value)||1), price=Math.max(0,Number(modal.querySelector('#pickerPrice').value)||0), currency=modal.querySelector('#pickerCurrency').value||'EGP';
+        pickerDraft.push({itemId:item.id,id:item.id,name:menuName(item),qty,price,currency,size:'كبير',sugar:'عادي',ice:'وسط',note:''}); renderPickerDraft();
       };
       modal.querySelector('#pickerSave').onclick=()=>{
         if(!pickerDraft.length)return alert('أضف صنفًا واحدًا على الأقل');
@@ -737,16 +738,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const sale=getSaleById(pickerSaleId); if(!sale)return;
         const reason=prompt('سبب تعديل الفاتورة:'); if(!reason||!reason.trim())return;
         if(!sale.originalSnapshot)sale.originalSnapshot=JSON.parse(JSON.stringify(sale));
-        const newTotal=pickerDraft.reduce((sum,c)=>sum+Number(c.qty||0)*Number(c.price||0),0);
+        const newCurrencyTotals=cartCurrencyTotals(pickerDraft), newTotal=Object.values(newCurrencyTotals).reduce((a,v)=>a+v,0);
         sale.adjustments=Array.isArray(sale.adjustments)?sale.adjustments:[];
         sale.adjustments.push({type:'items_edited',reason:reason.trim(),previousCart:JSON.parse(JSON.stringify(sale.cart||[])),previousNetTotal:Number(sale.netTotal??sale.total??0),newCart:JSON.parse(JSON.stringify(pickerDraft)),newTotal,at:new Date().toISOString()});
-        sale.cart=JSON.parse(JSON.stringify(pickerDraft)); sale.total=newTotal; sale.netTotal=newTotal;
+        sale.cart=JSON.parse(JSON.stringify(pickerDraft)); sale.currencyTotals=newCurrencyTotals; sale.netCurrencyTotals={...newCurrencyTotals}; sale.currency=Object.keys(newCurrencyTotals).filter(c=>newCurrencyTotals[c]>0).length>1?'MIXED':(Object.keys(newCurrencyTotals).find(c=>newCurrencyTotals[c]>0)||sale.currency||'EGP'); sale.total=newTotal; sale.netTotal=newTotal;
         persistState(); renderReports(); renderSalesHistory(); modal.style.display='none'; alert('تم حفظ تعديل الفاتورة مع الاحتفاظ بسجلها السابق.');
       };
       modal.querySelector('#pickerCategories').onclick=e=>{const b=e.target.closest('[data-cat]');if(!b)return;pickerCategory=b.dataset.cat;renderPickerCatalog();};
-      modal.querySelector('#pickerItems').onclick=e=>{const b=e.target.closest('[data-item]');if(!b)return;const item=getPublicMenu().items.find(x=>String(x.id)===b.dataset.item);if(!item)return;modal.dataset.selectedId=item.id;const usdRate=Number(document.getElementById('usdExchangeRateInput')?.value||localStorage.getItem('fp_report_usd_rate')||0);const price=state.currency==='EUR'?Number(item.priceEUR||0):state.currency==='USD'?Number(item.priceUSD||(usdRate>0?Number(item.priceEGP||0)/usdRate:0)):Number(item.priceEGP||0);modal.querySelector('#pickerPrice').value=price;modal.querySelector('#pickerQty').value=1;};
+      modal.querySelector('#pickerItems').onclick=e=>{const b=e.target.closest('[data-item]');if(!b)return;const item=getPublicMenu().items.find(x=>String(x.id)===b.dataset.item);if(!item)return;modal.dataset.selectedId=item.id;const currency=modal.querySelector('#pickerCurrency').value||state.currency||'EGP';const usdRate=Number(document.getElementById('usdExchangeRateInput')?.value||localStorage.getItem('fp_report_usd_rate')||0);const price=currency==='EUR'?Number(item.priceEUR||0):currency==='USD'?Number(item.priceUSD||(usdRate>0?Number(item.priceEGP||0)/usdRate:0)):currency==='GBP'?Number(item.priceGBP||0):Number(item.priceEGP||0);modal.querySelector('#pickerPrice').value=price;modal.querySelector('#pickerQty').value=1;};
       modal.querySelector('#pickerDraftRows').onclick=e=>{const b=e.target.closest('[data-remove]');if(b){pickerDraft.splice(Number(b.dataset.remove),1);renderPickerDraft();}};
     }
+    modal.querySelector('#pickerCurrency').value=(sale&&sale.currency&&sale.currency!=='MIXED')?sale.currency:(state.currency||'EGP');
     modal.querySelector('#pickerTitle').textContent=target==='cart'?'إضافة أصناف للفاتورة':'تعديل أصناف الفاتورة '+saleId;
     modal.querySelector('#pickerSave').textContent=target==='cart'?'اعتماد الأصناف في الفاتورة':'حفظ تعديل الفاتورة';
     modal.style.display='flex'; renderPickerCatalog(); renderPickerDraft();
@@ -760,9 +762,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function renderPickerDraft(){
     const host=document.querySelector('#menuItemPickerModal #pickerDraftRows'); if(!host)return;
-    host.innerHTML=pickerDraft.map((c,i)=>`<div style="display:grid;grid-template-columns:1fr 65px 85px 30px;gap:5px;align-items:center;padding:5px;border-bottom:1px solid #444;font-size:12px"><span>${escapeHtml(c.name||c.itemName||c.itemId||'صنف')}</span><input aria-label="الكمية" type="number" min="1" value="${Number(c.qty||1)}" data-qty="${i}" class="input-field" style="padding:5px"><input aria-label="السعر" type="number" min="0" step=".01" value="${Number(c.price||0)}" data-price="${i}" class="input-field" style="padding:5px"><button type="button" data-remove="${i}" class="btn btn-danger" style="padding:4px">×</button></div>`).join('')||'<div style="color:#aaa;font-size:12px">لم تتم إضافة أصناف بعد</div>';
+    host.innerHTML=pickerDraft.map((c,i)=>`<div style="display:grid;grid-template-columns:minmax(75px,1fr) 55px 75px 66px 28px;gap:4px;align-items:center;padding:5px;border-bottom:1px solid #444;font-size:11px"><span>${escapeHtml(c.name||c.itemName||c.itemId||'صنف')}</span><input aria-label="الكمية" type="number" min="1" value="${Number(c.qty||1)}" data-qty="${i}" class="input-field" style="padding:5px"><input aria-label="السعر" type="number" min="0" step=".01" value="${Number(c.price||0)}" data-price="${i}" class="input-field" style="padding:5px"><select aria-label="العملة" data-line-currency="${i}" class="input-field" style="padding:5px"><option value="EGP" ${(c.currency||state.currency)==="EGP"?"selected":""}>EGP</option><option value="USD" ${(c.currency||state.currency)==="USD"?"selected":""}>USD</option><option value="EUR" ${(c.currency||state.currency)==="EUR"?"selected":""}>EUR</option><option value="GBP" ${(c.currency||state.currency)==="GBP"?"selected":""}>GBP</option></select><button type="button" data-remove="${i}" class="btn btn-danger" style="padding:4px">×</button></div>`).join('')||'<div style="color:#aaa;font-size:12px">لم تتم إضافة أصناف بعد</div>';
     host.querySelectorAll('[data-qty]').forEach(el=>el.onchange=()=>{pickerDraft[Number(el.dataset.qty)].qty=Math.max(1,Number(el.value)||1);});
     host.querySelectorAll('[data-price]').forEach(el=>el.onchange=()=>{pickerDraft[Number(el.dataset.price)].price=Math.max(0,Number(el.value)||0);});
+    host.querySelectorAll('[data-line-currency]').forEach(el=>el.onchange=()=>{pickerDraft[Number(el.dataset.lineCurrency)].currency=el.value;});
   }
 
   function renderCartFull() {
