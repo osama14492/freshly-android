@@ -560,47 +560,92 @@
   appId: "1:92150322225:web:ced60779ef510197863110",
   measurementId: "G-E4CRKEHSXF"
 };
-  if (!window.firebase || typeof firebase.initializeApp !== 'function') {
-    throw new Error('Firebase App SDK لم يتم تحميله. تحقق من اتصال الإنترنت.');
-  }
-  if (typeof firebase.auth !== 'function') {
-    throw new Error('Firebase Authentication SDK لم يتم تحميله. أعد فتح التطبيق بعد الاتصال بالإنترنت.');
-  }
-  if (typeof firebase.database !== 'function') {
-    throw new Error('Firebase Realtime Database SDK لم يتم تحميله.');
-  }
-  if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-  const rtdb = firebase.database();
 
-document.addEventListener('DOMContentLoaded', () => {
-  const managerUid = 'AiQ3H3qAsRdI4HMvfDfXgQCzplj1';
-  document.getElementById('freshlyLogoutBtn')?.addEventListener('click', async () => {
-    if (confirm('هل تريد تسجيل الخروج من حسابك؟')) await firebase.auth().signOut();
-  });
-  const loginForm = document.getElementById('freshlyLoginForm');
-  const loginMessage = document.getElementById('freshlyLoginMessage');
-  loginForm.addEventListener('submit', async (event) => {
+  let rtdb;
+  let firebaseReadyPromise = null;
+  function loadFirebaseScript(url) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      let settled = false;
+      const finish = (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        error ? reject(error) : resolve();
+      };
+      const timeout = setTimeout(() => finish(new Error('انتهت مهلة تحميل مكتبة Firebase: ' + url)), 15000);
+      script.src = url + (url.includes('?') ? '&' : '?') + 'freshlyRetry=1';
+      script.onload = () => finish();
+      script.onerror = () => finish(new Error('تعذر تحميل مكتبة Firebase: ' + url));
+      document.head.appendChild(script);
+    });
+  }
+  function ensureFirebaseReady() {
+    if (!firebaseReadyPromise) {
+      firebaseReadyPromise = (async () => {
+        const base = 'https://www.gstatic.com/firebasejs/9.22.0/';
+        if (!window.firebase || typeof firebase.initializeApp !== 'function') {
+          await loadFirebaseScript(base + 'firebase-app-compat.js');
+        }
+        if (typeof firebase.auth !== 'function') {
+          await loadFirebaseScript(base + 'firebase-auth-compat.js');
+        }
+        if (typeof firebase.database !== 'function') {
+          await loadFirebaseScript(base + 'firebase-database-compat.js');
+        }
+        if (!window.firebase || typeof firebase.initializeApp !== 'function' ||
+            typeof firebase.auth !== 'function' || typeof firebase.database !== 'function') {
+          throw new Error('لم تكتمل مكتبات Firebase المطلوبة. تحقق من اتصال الإنترنت ثم أعد المحاولة.');
+        }
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        return firebase;
+      })().catch(error => {
+        firebaseReadyPromise = null;
+        throw error;
+      });
+    }
+    return firebaseReadyPromise;
+  }
+
+  // ربط زر الدخول مبكراً حتى لا يبقى بلا استجابة إذا تأخر تحميل Firebase.
+  const gateForm = document.getElementById('freshlyLoginForm');
+  const gateMessage = document.getElementById('freshlyLoginMessage');
+  gateForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const submit = document.getElementById('freshlyLoginSubmit');
     submit.disabled = true;
     submit.textContent = 'جارٍ التحقق...';
-    loginMessage.textContent = '';
+    gateMessage.textContent = '';
     try {
+      await ensureFirebaseReady();
       await firebase.auth().signInWithEmailAndPassword(
         document.getElementById('freshlyLoginEmail').value.trim(),
         document.getElementById('freshlyLoginPassword').value
       );
+      try { window.FRESHLYNative?.requestNotificationPermission?.(); } catch (notificationError) {
+        console.warn('FRESHLY notification permission request:', notificationError);
+      }
     } catch (error) {
       console.error('FRESHLY Firebase login error:', error);
-      const authErrorCode = error && error.code ? error.code : 'unknown';
-      const authErrorMessage = error && error.message ? error.message : String(error || 'Unknown error');
-      loginMessage.textContent = authErrorCode === 'auth/invalid-credential' || authErrorCode === 'auth/wrong-password' || authErrorCode === 'auth/user-not-found'
+      const code = error && error.code ? error.code : 'unknown';
+      const message = error && error.message ? error.message : String(error || 'Unknown error');
+      gateMessage.textContent = code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found'
         ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.'
-        : 'فشل تسجيل الدخول (' + authErrorCode + '): ' + authErrorMessage;
+        : 'تعذر تسجيل الدخول (' + code + '): ' + message;
       submit.disabled = false;
       submit.textContent = 'تسجيل الدخول';
     }
   });
+
+  async function bootFreshlyApp() {
+    await ensureFirebaseReady();
+    rtdb = firebase.database();
+    const startFreshlyApp = () => {
+  const managerUid = 'AiQ3H3qAsRdI4HMvfDfXgQCzplj1';
+  document.getElementById('freshlyLogoutBtn')?.addEventListener('click', async () => {
+    if (confirm('هل تريد تسجيل الخروج من حسابك؟')) await firebase.auth().signOut();
+  });
+  const loginMessage = document.getElementById('freshlyLoginMessage');
 
   firebase.auth().onAuthStateChanged((user) => {
     if (!user) {
@@ -887,6 +932,15 @@ document.addEventListener('DOMContentLoaded', () => {
         persistState();
         renderHeldOrders();
         playAlertSound();
+        try {
+          window.FRESHLYNative?.showNotification?.(
+            'طلب جديد من FRESHLY',
+            'وصل طلب جديد من المنيو الإلكتروني رقم ' + orderId,
+            'order-' + orderId
+          );
+        } catch (notificationError) {
+          console.warn('FRESHLY order notification failed:', notificationError);
+        }
         alert('🚨 وصل أوردر جديد من المنيو (' + orderId + ') وتم إضافته للأوردرات المعلقة بنجاح!');
       }
     }
@@ -1846,8 +1900,21 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCartFull();
   renderHeldOrders();
   renderHomeOrderStatus();
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', startFreshlyApp, { once: true });
+    } else {
+      startFreshlyApp();
+    }
+  }
+
+  bootFreshlyApp().catch(error => {
+    console.error('FRESHLY startup error:', error);
+    const message = document.getElementById('freshlyLoginMessage');
+    if (message) message.textContent = 'تعذر تشغيل التطبيق: ' + (error.message || error);
+    const submit = document.getElementById('freshlyLoginSubmit');
+    if (submit) { submit.disabled = false; submit.textContent = 'تسجيل الدخول'; }
   });
-});
 </script>
 
 <script>
