@@ -70,81 +70,36 @@ jobs:
           cp menu.html app/src/main/assets/menu.html
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("app/src/main/assets/offline-bridge.js")
+          p = Path('app/src/main/assets/offline-bridge.js')
           s = p.read_text()
-          start = s.index("  function installFacade() {")
-          end = s.index("  window.addEventListener('online'", start)
-          replacement = r'''  function installFacade() {
-    const facade={
-      get apps(){ return realFirebase && realFirebase.apps ? realFirebase.apps : (realApp ? [realApp] : []); },
-      initializeApp(config){
-        firebaseConfig=config;
-        if(realFirebase && typeof realFirebase.initializeApp==='function') {
-          try { realApp=realFirebase.apps&&realFirebase.apps.length?realFirebase.app():realFirebase.initializeApp(config); }
-          catch(_) { try { realApp=realFirebase.app(); } catch(__){} }
-        } else {
-          realApp={options:config,name:'[DEFAULT]'};
-        }
-        if (realApp) {
-          listeners.forEach(attachRemote);
-          flushQueue();
-        }
-        return realApp;
-      },
-      // Preserve the official compat Authentication API; the old facade hid auth().
-      auth(...args){
-        if (!realFirebase || typeof realFirebase.auth !== 'function') {
-          throw new Error('مكتبة Firebase Authentication غير جاهزة. أعد فتح التطبيق مع اتصال الإنترنت.');
-        }
-        return realFirebase.auth(...args);
-      },
-      database(){ return {ref:makeRef}; }
-    };
-    window.firebase=facade;
-  }
-  installFacade();
-  async function loadSdk() {
-    if (realFirebase && realApp) { listeners.forEach(attachRemote); await flushQueue(); return; }
-    // Reuse the already-loaded App/Auth/Database namespace instead of replacing it
-    // with a partial App+Database reload that silently drops Firebase Authentication.
-    if (realFirebase && typeof realFirebase.auth === 'function' && typeof realFirebase.database === 'function') {
-      if (firebaseConfig && !realApp) {
-        try { realApp=realFirebase.apps&&realFirebase.apps.length?realFirebase.app():realFirebase.initializeApp(firebaseConfig); }
-        catch(e) { console.warn('Firebase app initialization is waiting for sign-in startup',e); }
-      }
-      if (realApp) { listeners.forEach(attachRemote); await flushQueue(); }
-      return;
-    }
-    if (loadingSdk || !navigator.onLine) return;
-    loadingSdk=true;
-    try {
-      // Recover all three required compat modules in dependency order.
-      window.firebase=undefined;
-      const loadScript = (src) => new Promise((resolve,reject)=>{
-        const s=document.createElement('script'); s.src=src; s.onload=resolve; s.onerror=()=>reject(new Error('Failed to load '+src)); document.head.appendChild(s);
-      });
-      const base='https://www.gstatic.com/firebasejs/9.22.0/';
-      await loadScript(base+'firebase-app-compat.js');
-      await loadScript(base+'firebase-auth-compat.js');
-      await loadScript(base+'firebase-database-compat.js');
-      realFirebase=window.firebase;
-      if (realFirebase && firebaseConfig) { realApp=realFirebase.apps&&realFirebase.apps.length?realFirebase.app():realFirebase.initializeApp(firebaseConfig); }
-      installFacade();
-      if (realApp) { listeners.forEach(attachRemote); await flushQueue(); }
-    } catch(e) {
-      installFacade();
-      console.warn('Firebase SDK unavailable; FRESHLY remains in offline mode',e);
-    } finally { loadingSdk=false; }
-  }
-'''
-          p.write_text(s[:start] + replacement + s[end:])
-          patched = p.read_text()
-          for required in ("auth(...args)", "firebase-auth-compat.js", "firebase-app-compat.js", "firebase-database-compat.js"):
-              if required not in patched:
-                  raise SystemExit("Offline bridge patch failed: " + required)
-          print("Patched offline bridge: Firebase Auth is preserved; App/Auth/Database are loaded together.")
+          old = "      database(){ return {ref:makeRef}; }"
+          new = "      auth(...args){ if (!realFirebase || typeof realFirebase.auth !== 'function') throw new Error('Firebase Authentication SDK is not loaded'); return realFirebase.auth(...args); },\\n      database(){ return {ref:makeRef}; }"
+          if old not in s:
+              raise SystemExit('Firebase offline bridge facade signature not found')
+          s = s.replace(old, new, 1)
+          old_init = " } return realApp; },"
+          new_init = " } if (realApp) { listeners.forEach(attachRemote); flushQueue(); } return realApp; },"
+          if old_init not in s:
+              raise SystemExit('Firebase initializeApp bridge code not found')
+          s = s.replace(old_init, new_init, 1)
+          old_gate = "    if (realFirebase && realApp) { listeners.forEach(attachRemote); flushQueue(); return; }\\n"
+          new_gate = old_gate + "    if (realFirebase && typeof realFirebase.auth === 'function' && typeof realFirebase.database === 'function') return;\\n"
+          if old_gate not in s:
+              raise SystemExit('Firebase load gate not found')
+          s = s.replace(old_gate, new_gate, 1)
+          database_load = "      await new Promise((resolve,reject)=>{ const s=document.createElement('script'); s.src='https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); });"
+          auth_load = "      await new Promise((resolve,reject)=>{ const s=document.createElement('script'); s.src='https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); });\\n" + database_load
+          if database_load not in s:
+              raise SystemExit('Firebase database SDK loader not found')
+          s = s.replace(database_load, auth_load, 1)
+          p.write_text(s)
+          for token in ('auth(...args)', 'firebase-auth-compat.js', 'listeners.forEach(attachRemote)'):
+              if token not in s:
+                  raise SystemExit('Firebase Auth bridge validation failed: ' + token)
+          print('Fixed Firebase offline bridge: auth is preserved and reloading keeps App/Auth/Database together.')
           PY
           node --check app/src/main/assets/offline-bridge.js
+          
           # Restore the original, item-matched FRESHLY menu photos from the menu repository.
           git clone --depth 1 https://github.com/osama14492/FRESHLY-MENU-.git /tmp/freshly-menu
           mkdir -p app/src/main/assets/images
