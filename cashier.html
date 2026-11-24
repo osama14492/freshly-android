@@ -435,6 +435,14 @@
         </div>
       </section>
 
+      <!-- Dedicated invoices, after-sales and custody workspace -->
+      <section id="view-records" class="view-section">
+        <h3 style="font-size:0.92rem;color:var(--gold-main);margin-bottom:4px;">🗂️ سجل الفواتير وإدارة ما بعد البيع والعهدة</h3>
+        <div id="recordsWorkspace" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;">
+          <div class="panel-box" style="text-align:center;color:var(--text-muted);">جارٍ تجهيز السجلات...</div>
+        </div>
+      </section>
+
       <!-- 4. SETTINGS VIEW -->
       <section id="view-settings" class="view-section">
         <h3 style="font-size:0.92rem; color:var(--gold-main); margin-bottom:6px;">إعدادات النظام والشركة</h3>
@@ -477,6 +485,7 @@
       <button class="nav-btn active" data-tab="pos"><span class="icon">🧾</span><span>POS</span></button>
       <button class="nav-btn" data-tab="pending"><span class="icon">⏳</span><span>المعلقة</span><span id="pendingBadge" class="badge-count">0</span></button>
       <button class="nav-btn" data-tab="reports"><span class="icon">📊</span><span>التقارير</span></button>
+      <button class="nav-btn" data-tab="records"><span class="icon">🗂️</span><span>السجلات</span></button>
       <button class="nav-btn" data-tab="menu" onclick="window.location.href='menu.html'"><span class="icon">📱</span><span>المنيو</span></button>
       <button class="nav-btn" data-tab="settings"><span class="icon">⚙️</span><span>الإعدادات</span></button>
     </nav>
@@ -499,6 +508,15 @@
   const rtdb = firebase.database();
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Move existing invoice/post-sale and custody controls into their own tab without recreating or changing their data handlers.
+  const recordsWorkspace = document.getElementById('recordsWorkspace');
+  const invoiceHistoryPanel = document.getElementById('salesHistoryList')?.closest('.panel-box');
+  const custodyManagementPanel = document.getElementById('custodyDateInput')?.closest('.panel-box');
+  if (recordsWorkspace) {
+    recordsWorkspace.innerHTML = '';
+    if (invoiceHistoryPanel) recordsWorkspace.appendChild(invoiceHistoryPanel);
+    if (custodyManagementPanel) recordsWorkspace.appendChild(custodyManagementPanel);
+  }
   const todayStr = new Date().toISOString().split('T')[0];
 
   const DEFAULT_ITEMS = [
