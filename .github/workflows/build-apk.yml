@@ -20,8 +20,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Extract Android project
-        run: unzip -o FRESHLY_ANDROID_UPLOAD-1.zip -d .
+      - name: Extract Android project without overwriting current web sources
+        run: |
+          mkdir -p /tmp/freshly-current-sources
+          cp cashier.html menu.html FRESHLY_SECURE_MainActivity.kt FRESHLY_BACKUP_RESTORE_BLOCK.js /tmp/freshly-current-sources/
+          unzip -o FRESHLY_ANDROID_UPLOAD-1.zip -d .
+          cp /tmp/freshly-current-sources/cashier.html .
+          cp /tmp/freshly-current-sources/menu.html .
+          cp /tmp/freshly-current-sources/FRESHLY_SECURE_MainActivity.kt .
+          cp /tmp/freshly-current-sources/FRESHLY_BACKUP_RESTORE_BLOCK.js .
       - name: Install password and biometric protection
         run: |
           mkdir -p app/src/main/java/com/freshly/premier
