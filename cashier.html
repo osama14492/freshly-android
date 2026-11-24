@@ -483,9 +483,9 @@
           <h4 style="font-size:.78rem;color:var(--gold-light);">🔐 حماية التطبيق</h4>
           <label style="display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--text-main);">
             <input type="checkbox" id="passwordProtectionEnabled" style="width:18px;height:18px;accent-color:var(--gold-main);">
-            تشغيل الرقم السري عند فتح التطبيق
+            تشغيل كلمة المرور عند فتح التطبيق ودخول الكاشير
           </label>
-          <div id="passwordProtectionStatus" style="font-size:.68rem;color:var(--text-muted);">يتم تطبيق الاختيار عند فتح التطبيق مرة أخرى.</div>
+          <div id="passwordProtectionStatus" style="font-size:.68rem;color:var(--text-muted);">عند التفعيل، تُطلب كلمة المرور أو بصمة الهاتف عند فتح التطبيق ودخول الكاشير.</div>
         </div>
         <div class="panel-box" style="display:flex; flex-direction:column; gap:8px;">
           <div>
@@ -1986,7 +1986,7 @@
       const saved = window.FRESHLYNative.setPasswordEnabled(enabled, confirmationPassword);
       if (!saved) throw new Error('كلمة مرور التطبيق غير صحيحة أو تعذر حفظ الإعداد.');
       if (passwordProtectionStatus) passwordProtectionStatus.textContent =
-        enabled ? 'الرقم السري مفعّل وسيُطلب عند فتح التطبيق.' : 'الرقم السري متوقف ولن يُطلب عند فتح التطبيق.';
+        enabled ? 'الحماية مفعّلة: ستُطلب كلمة المرور أو البصمة عند فتح التطبيق ودخول الكاشير.' : 'الحماية متوقفة: لن تُطلب كلمة المرور عند فتح التطبيق أو دخول الكاشير.';
     } catch (error) {
       passwordProtectionToggle.checked = !enabled;
       alert(error.message || 'تعذر حفظ إعداد الحماية.');
