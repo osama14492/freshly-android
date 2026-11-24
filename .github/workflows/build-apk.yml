@@ -195,28 +195,27 @@ jobs:
           s = p.read_text()
           marker = "<!-- FRESHLY_ORDERS_EXPENSES_ENTRY -->"
           if marker not in s:
-              block = """
-          <!-- FRESHLY_ORDERS_EXPENSES_ENTRY -->
+              if "</nav>" not in s or "</head>" not in s:
+                  raise SystemExit("Home navigation or head section not found; refusing to alter the home screen.")
+              styles = """
           <style>
-            #freshlyOrdersExpensesEntry{display:flex;align-items:center;justify-content:center;gap:9px;width:calc(100% - 28px);max-width:410px;margin:14px auto 24px;padding:14px 12px;border:1px solid rgba(212,175,55,.55);border-radius:13px;background:linear-gradient(135deg,#1c212d,#151922);color:#fcf6ba;text-decoration:none;font-weight:800;font-size:14px;box-shadow:0 5px 18px rgba(0,0,0,.25)}
+            .actions{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:14px!important}
+            .actions .action{display:flex!important;width:100%!important;min-height:88px!important;max-width:none!important;align-items:center!important}
             #freshlyOrdersExpensesEntry:active{transform:scale(.985)}
           </style>
-          <a id="freshlyOrdersExpensesEntry" href="orders-expenses.html">🧾 الطلبية والمصروفات الشخصية</a>
-          <script>
-          (function(){
-            var link=document.getElementById('freshlyOrdersExpensesEntry');
-            function label(){link.textContent=(document.documentElement.lang||'ar').toLowerCase().startsWith('en')?'🧾 Orders & Personal Expenses':'🧾 الطلبية والمصروفات الشخصية';}
-            label();
-            new MutationObserver(label).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
-          })();
-          </script>
           """
-              if "</body>" not in s:
-                  raise SystemExit("Home page closing body tag not found; refusing to alter the home screen.")
-              s = s.replace("</body>", block + "\n</body>", 1)
+              entry = '''
+          <!-- FRESHLY_ORDERS_EXPENSES_ENTRY -->
+          <a class="action" id="freshlyOrdersExpensesEntry" href="orders-expenses.html"><span class="ico">🧾</span><span><b>الطلبية والمصروفات الشخصية</b><small>المشتريات ونواقص الخامات والمصروفات والتقارير</small></span></a>
+          '''
+              s = s.replace("</head>", styles + "\\n</head>", 1)
+              s = s.replace("</nav>", entry + "\\n</nav>", 1)
               p.write_text(s)
-          if not p.exists() or "freshlyOrdersExpensesEntry" not in p.read_text():
-              raise SystemExit("Orders and expenses entry was not installed.")
+          home = p.read_text()
+          if home.count('class="action"') != 3 or "freshlyOrdersExpensesEntry" not in home:
+              raise SystemExit("Home screen must contain exactly three equal action buttons.")
+          if "orders-expenses.html" not in home:
+              raise SystemExit("Orders and expenses page link is missing.")
           page = Path("app/src/main/assets/orders-expenses.html")
           if not page.is_file() or page.stat().st_size < 10000:
               raise SystemExit("Orders and expenses page is missing or incomplete.")
