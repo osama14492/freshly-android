@@ -504,6 +504,34 @@
           <button id="saveSettingsBtn" class="btn btn-gold" style="margin-top:4px;">💾 حفظ الإعدادات</button>
           <button id="freshlyLogoutBtn" class="btn btn-danger" style="margin-top:4px;">🚪 تسجيل الخروج من الحساب</button>
         </div>
+        <div class="panel-box" id="freshlyAccountsPanel" style="display:flex;flex-direction:column;gap:9px;margin-top:10px;">
+          <h4 style="color:var(--gold-main);margin:0;">👥 إدارة حسابات الموظفين</h4>
+          <div style="font-size:.72rem;color:var(--text-muted);">إنشاء حساب مستقل لكل موظف وتحديد الصفحات المسموح بها ونوع الجهاز.</div>
+          <input id="staffName" class="input-field" placeholder="اسم الموظف">
+          <input id="staffEmail" class="input-field" type="email" placeholder="البريد الإلكتروني">
+          <input id="staffPassword" class="input-field" type="password" minlength="6" placeholder="كلمة مرور مؤقتة (6 أحرف على الأقل)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+            <select id="staffRole" class="input-field">
+              <option value="cashier">كاشير</option><option value="support">متابعة وما بعد البيع</option><option value="accountant">حسابات</option><option value="custom">صلاحيات مخصصة</option>
+            </select>
+            <select id="staffDeviceMode" class="input-field">
+              <option value="cashier_only">جهاز كاشير فقط</option><option value="full">جهاز شامل</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.75rem;">
+            <label><input type="checkbox" class="staff-perm" value="sales" checked> المبيعات</label>
+            <label><input type="checkbox" class="staff-perm" value="orders" checked> الطلبات</label>
+            <label><input type="checkbox" class="staff-perm" value="records"> السجلات والفواتير</label>
+            <label><input type="checkbox" class="staff-perm" value="reports"> التقارير</label>
+            <label><input type="checkbox" class="staff-perm" value="expenses"> المصروفات</label>
+            <label><input type="checkbox" class="staff-perm" value="custody"> العهدة</label>
+            <label><input type="checkbox" class="staff-perm" value="settings"> الإعدادات</label>
+            <label><input type="checkbox" class="staff-perm" value="menu"> إدارة المنيو</label>
+          </div>
+          <button id="createStaffAccountBtn" class="btn btn-gold">➕ إنشاء حساب الموظف</button>
+          <div id="staffAccountMessage" style="font-size:.78rem;min-height:20px;"></div>
+          <div id="staffAccountsList" style="display:flex;flex-direction:column;gap:7px;"></div>
+        </div>
       </section>
 
     </main>
@@ -562,26 +590,128 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  firebase.auth().onAuthStateChanged(async (user) => {
+  firebase.auth().onAuthStateChanged((user) => {
     if (!user) {
       document.body.classList.add('auth-locked');
-      return;
-    }
-    if (user.uid !== managerUid) {
-      await firebase.auth().signOut();
-      document.body.classList.add('auth-locked');
-      loginMessage.textContent = 'هذا الحساب غير معتمد حاليًا. سجّل الدخول بحساب المدير.';
-      const submit = document.getElementById('freshlyLoginSubmit');
-      submit.disabled = false;
-      submit.textContent = 'تسجيل الدخول';
       return;
     }
     document.body.classList.remove('auth-locked');
     loginMessage.textContent = '';
   });
 
+  let currentUserRole = null;
+  let currentPermissions = {};
+  const rolePresets = {
+    cashier: {sales:true,orders:true,records:false,reports:false,expenses:false,custody:false,settings:false,menu:false},
+    support: {sales:false,orders:true,records:true,reports:false,expenses:false,custody:false,settings:false,menu:false},
+    accountant: {sales:false,orders:false,records:true,reports:true,expenses:true,custody:true,settings:false,menu:false},
+    custom: {}
+  };
+  const staffRoleSelect = document.getElementById('staffRole');
+  staffRoleSelect?.addEventListener('change', () => {
+    const preset = rolePresets[staffRoleSelect.value] || {};
+    document.querySelectorAll('.staff-perm').forEach(box => {
+      if (Object.prototype.hasOwnProperty.call(preset, box.value)) box.checked = !!preset[box.value];
+    });
+  });
+  async function renderStaffAccounts() {
+    const host = document.getElementById('staffAccountsList');
+    if (!host || !firebase.auth().currentUser || firebase.auth().currentUser.uid !== managerUid) return;
+    try {
+      const snap = await rtdb.ref('userRoles').once('value');
+      host.innerHTML = '';
+      snap.forEach(child => {
+        if (child.key === managerUid) return;
+        const data = child.val() || {};
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:8px;border:1px solid var(--border-subtle);border-radius:8px;font-size:.75rem;display:flex;justify-content:space-between;gap:8px;align-items:center;';
+        const label = document.createElement('span');
+        label.textContent = (data.name || data.email || child.key) + ' — ' + (data.active === false ? 'موقوف' : 'نشط') + ' — ' + (data.deviceMode === 'cashier_only' ? 'كاشير فقط' : 'شامل');
+        const toggle = document.createElement('button');
+        toggle.className = 'btn btn-danger';
+        toggle.textContent = data.active === false ? 'تفعيل' : 'إيقاف';
+        toggle.addEventListener('click', async () => {
+          await rtdb.ref('userRoles/' + child.key + '/active').set(data.active === false);
+          renderStaffAccounts();
+        });
+        row.append(label,toggle); host.appendChild(row);
+      });
+    } catch (err) { host.textContent = 'تعذر تحميل الحسابات. تأكد من قواعد Firebase بعد اعتمادها.'; }
+  }
+  document.getElementById('createStaffAccountBtn')?.addEventListener('click', async () => {
+    const message = document.getElementById('staffAccountMessage');
+    const btn = document.getElementById('createStaffAccountBtn');
+    const name = document.getElementById('staffName').value.trim();
+    const email = document.getElementById('staffEmail').value.trim();
+    const password = document.getElementById('staffPassword').value;
+    if (!name || !email || password.length < 6) { message.textContent = 'أدخل الاسم والبريد وكلمة مرور لا تقل عن 6 أحرف.'; return; }
+    btn.disabled = true; message.textContent = 'جارٍ إنشاء الحساب...';
+    let secondary = null;
+    try {
+      secondary = firebase.apps.find(app => app.name === 'FRESHLY_STAFF_CREATION') || firebase.initializeApp(firebaseConfig, 'FRESHLY_STAFF_CREATION');
+      const credential = await secondary.auth().createUserWithEmailAndPassword(email, password);
+      const permissions = {};
+      document.querySelectorAll('.staff-perm').forEach(box => permissions[box.value] = box.checked);
+      const role = staffRoleSelect.value;
+      const deviceMode = document.getElementById('staffDeviceMode').value;
+      await rtdb.ref('userRoles/' + credential.user.uid).set({
+        name, email, role, active:true, deviceMode, permissions,
+        createdAt: new Date().toISOString(), createdBy: managerUid
+      });
+      await secondary.auth().signOut();
+      message.textContent = 'تم إنشاء الحساب وحفظ صلاحياته. أرسل بيانات الدخول للموظف بشكل آمن.';
+      document.getElementById('staffName').value = '';
+      document.getElementById('staffEmail').value = '';
+      document.getElementById('staffPassword').value = '';
+      renderStaffAccounts();
+    } catch (error) {
+      message.textContent = error.code === 'auth/email-already-in-use' ? 'هذا البريد مسجل بالفعل.' : 'تعذر إنشاء الحساب: تحقق من الاتصال وإعدادات Firebase.';
+      try { if (secondary) await secondary.auth().signOut(); } catch (_) {}
+    } finally { btn.disabled = false; }
+  });
+
   firebase.auth().onAuthStateChanged(async (authenticatedUser) => {
-    if (!authenticatedUser || authenticatedUser.uid !== managerUid) return;
+    if (!authenticatedUser) return;
+    try {
+      const isManager = authenticatedUser.uid === managerUid;
+      let roleData = null;
+      if (!isManager) {
+        const roleSnap = await rtdb.ref('userRoles/' + authenticatedUser.uid).once('value');
+        roleData = roleSnap.val();
+        if (!roleData || roleData.active !== true) throw new Error('ACCOUNT_NOT_ACTIVE');
+      }
+      currentUserRole = isManager ? {role:'admin',name:'المدير',active:true,deviceMode:'full'} : roleData;
+      currentPermissions = isManager ? {sales:true,orders:true,records:true,reports:true,expenses:true,custody:true,settings:true,menu:true,accounts:true} : (roleData.permissions || {});
+      document.body.classList.remove('auth-locked');
+      document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
+        const tab = btn.getAttribute('data-tab');
+        const key = ({pending:'orders',records:'records',reports:'reports',settings:'settings',menu:'menu'})[tab] || tab;
+        const allowed = !!currentPermissions[key] && (roleData?.deviceMode !== 'cashier_only' || ['sales','pending'].includes(tab));
+        btn.style.display = allowed ? '' : 'none';
+      });
+      document.querySelectorAll('.view-section').forEach(view => {
+        const tab = view.id.replace('view-','');
+        const key = ({pending:'orders',records:'records',reports:'reports',settings:'settings'})[tab] || tab;
+        const allowed = isManager || (!!currentPermissions[key] && (currentUserRole.deviceMode !== 'cashier_only' || ['sales','pending'].includes(tab)));
+        if (!allowed) view.classList.remove('active');
+      });
+      if (!isManager) {
+        document.getElementById('freshlyAccountsPanel')?.remove();
+        document.getElementById('freshlyLogoutBtn')?.addEventListener('click', () => firebase.auth().signOut());
+      } else renderStaffAccounts();
+      const firstAllowed = ['sales','pending','records','reports','settings'].find(tab => {
+        const key = ({pending:'orders'})[tab] || tab;
+        return !!currentPermissions[key] && (currentUserRole.deviceMode !== 'cashier_only' || ['sales','pending'].includes(tab));
+      }) || 'sales';
+      if (!document.getElementById('view-' + firstAllowed)?.classList.contains('active')) {
+        if (typeof switchTab === 'function') switchTab(firstAllowed);
+      }
+    } catch (err) {
+      document.body.classList.add('auth-locked');
+      loginMessage.textContent = err.message === 'ACCOUNT_NOT_ACTIVE' ? 'هذا الحساب موقوف. تواصل مع المدير.' : 'الحساب غير مضاف للنظام أو تعذر التحقق من الصلاحيات.';
+      await firebase.auth().signOut();
+    }
+  });
 
   // Move existing invoice/post-sale and custody controls into their own tab without recreating or changing their data handlers.
   const recordsWorkspace = document.getElementById('recordsWorkspace');
