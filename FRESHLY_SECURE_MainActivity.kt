@@ -90,7 +90,11 @@ class MainActivity : FragmentActivity() {
                 val protected = uri.host == "appassets.androidplatform.net" &&
                     uri.path?.endsWith("/cashier.html") == true
                 if (!protected) return false
-                authenticateForEntry { webView.post { webView.loadUrl(uri.toString()) } }
+                if (prefs.getBoolean("password_enabled", true)) {
+                    authenticateForEntry { webView.post { webView.loadUrl(uri.toString()) } }
+                } else {
+                    webView.post { webView.loadUrl(uri.toString()) }
+                }
                 return true
             }
         }
