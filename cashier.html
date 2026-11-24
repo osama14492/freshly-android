@@ -502,6 +502,7 @@
           </div>
 
           <button id="saveSettingsBtn" class="btn btn-gold" style="margin-top:4px;">💾 حفظ الإعدادات</button>
+          <button id="freshlyLogoutBtn" class="btn btn-danger" style="margin-top:4px;">🚪 تسجيل الخروج من الحساب</button>
         </div>
       </section>
 
@@ -536,6 +537,9 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const managerUid = 'AiQ3H3qAsRdI4HMvfDfXgQCzplj1';
+  document.getElementById('freshlyLogoutBtn')?.addEventListener('click', async () => {
+    if (confirm('هل تريد تسجيل الخروج من حساب المدير؟')) await firebase.auth().signOut();
+  });
   const loginForm = document.getElementById('freshlyLoginForm');
   const loginMessage = document.getElementById('freshlyLoginMessage');
   loginForm.addEventListener('submit', async (event) => {
