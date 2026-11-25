@@ -196,7 +196,7 @@ jobs:
           """
           if "freshlyFcmTokenBtn" not in page:
               if "</body>" not in page: raise SystemExit("Cashier page closing body tag not found; cannot safely add token control.")
-              page = page.replace("</body>", token_ui + "\\n</body>", 1)
+              page = page.replace("</body>", token_ui + "\n</body>", 1)
               cashier.write_text(page)
           print("Installed FCM SDK, token bridge, background notification service, and cashier token-copy control.")
           PY
