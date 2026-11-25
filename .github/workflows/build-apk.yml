@@ -165,7 +165,40 @@ jobs:
           </service>
           </application>''', 1)
           manifest.write_text(x)
-          print("Installed FCM SDK, token bridge, background notification service, and manifest.")
+          # Add a small cashier-only control so the owner can copy this device's FCM token.
+          cashier = Path("cashier.html")
+          page = cashier.read_text()
+          token_ui = r"""
+          <style>
+            #freshlyFcmTokenBtn{position:fixed;left:12px;bottom:12px;z-index:2147483000;border:1px solid #c9a64b;border-radius:12px;background:#171717;color:#f4d77c;padding:10px 13px;font:600 12px Arial;box-shadow:0 3px 14px #0005}
+          </style>
+          <button id="freshlyFcmTokenBtn" type="button">نسخ رمز إشعارات الطلبات</button>
+          <script>
+          (function(){
+            const b=document.getElementById('freshlyFcmTokenBtn');
+            if(!b || b.dataset.ready) return; b.dataset.ready='1';
+            b.addEventListener('click',function(){
+              if(!window.FRESHLYNative || !FRESHLYNative.getFcmToken){alert('ميزة الإشعارات غير متاحة في هذا الإصدار.');return;}
+              b.disabled=true; b.textContent='جارٍ استخراج الرمز...';
+              window.__freshlyReceiveFcmToken=function(token){
+                b.disabled=false; b.textContent='نسخ رمز إشعارات الطلبات';
+                if(!token){alert('تعذر استخراج رمز الإشعارات. تأكد من اتصال الإنترنت ثم أعد المحاولة.');return;}
+                const t=document.createElement('textarea');t.value=token;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();
+                let ok=false;try{ok=document.execCommand('copy')}catch(e){}
+                t.remove();
+                if(ok){alert('تم نسخ رمز الجهاز. ضعه في Cloudflare Secret باسم FCM_DEVICE_TOKEN.');}
+                else{prompt('انسخ رمز الجهاز وضعه في Cloudflare Secret باسم FCM_DEVICE_TOKEN:',token);}
+              };
+              FRESHLYNative.getFcmToken('__freshlyReceiveFcmToken');
+            });
+          })();
+          </script>
+          """
+          if "freshlyFcmTokenBtn" not in page:
+              if "</body>" not in page: raise SystemExit("Cashier page closing body tag not found; cannot safely add token control.")
+              page = page.replace("</body>", token_ui + "\\n</body>", 1)
+              cashier.write_text(page)
+          print("Installed FCM SDK, token bridge, background notification service, and cashier token-copy control.")
           PY
           echo '--- FCM files ---'
           grep -n "firebase-messaging\\|google-services" app/build.gradle build.gradle
