@@ -63,14 +63,14 @@ jobs:
           root = Path("build.gradle")
           rs = root.read_text()
           if "com.google.gms.google-services" not in rs:
-              rs = rs.replace("plugins {", "plugins {\\n    id 'com.google.gms.google-services' version '4.4.2' apply false", 1)
+              rs = rs.replace("plugins {", "plugins {\n    id 'com.google.gms.google-services' version '4.4.2' apply false", 1)
           root.write_text(rs)
           app = Path("app/build.gradle")
           a = app.read_text()
           if "com.google.gms.google-services" not in a:
-              a = a.replace("plugins {", "plugins {\\n    id 'com.google.gms.google-services'", 1)
+              a = a.replace("plugins {", "plugins {\n    id 'com.google.gms.google-services'", 1)
           if "firebase-bom" not in a:
-              a = a.replace("dependencies {", "dependencies {\\n    implementation platform('com.google.firebase:firebase-bom:33.7.0')\\n    implementation 'com.google.firebase:firebase-messaging'\\n", 1)
+              a = a.replace("dependencies {", "dependencies {\n    implementation platform('com.google.firebase:firebase-bom:33.7.0')\n    implementation 'com.google.firebase:firebase-messaging'\n", 1)
           app.write_text(a)
           # Firebase client configuration from the user's existing google-services.json.
           config = {
@@ -78,7 +78,7 @@ jobs:
             "client":[{"client_info":{"mobilesdk_app_id":"1:92150322225:android:ae1bd2020674d0a6863110","android_client_info":{"package_name":"com.freshly.premier"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyCVC0cT8nPvYMeH6mawHJl_AK0IQ6DRRG4"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],
             "configuration_version":"1"
           }
-          Path("app/google-services.json").write_text(json.dumps(config, indent=2) + "\\n")
+          Path("app/google-services.json").write_text(json.dumps(config, indent=2) + "\n")
           # FCM service: displays high-priority order alerts even when WebView is closed.
           service = r'''package com.freshly.premier
           
@@ -132,8 +132,8 @@ jobs:
           main = Path("app/src/main/java/com/freshly/premier/MainActivity.kt")
           m = main.read_text()
           if "FirebaseMessaging.getInstance().token" not in m:
-              m = m.replace("import android.util.Base64", "import android.util.Base64\\nimport com.google.firebase.messaging.FirebaseMessaging\\nimport org.json.JSONObject", 1)
-              anchor = "        @JavascriptInterface\\n        fun areNotificationsEnabled(): Boolean = areFreshlyNotificationsEnabled()"
+              m = m.replace("import android.util.Base64", "import android.util.Base64\nimport com.google.firebase.messaging.FirebaseMessaging\nimport org.json.JSONObject", 1)
+              anchor = "        @JavascriptInterface\n        fun areNotificationsEnabled(): Boolean = areFreshlyNotificationsEnabled()"
               addition = anchor + '''
           
                   @JavascriptInterface
@@ -154,7 +154,7 @@ jobs:
           manifest = Path("app/src/main/AndroidManifest.xml")
           x = manifest.read_text()
           if 'android.permission.POST_NOTIFICATIONS' not in x:
-              x = x.replace("<application", '<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\\n    <uses-permission android:name="android.permission.VIBRATE"/>\\n    <application', 1)
+              x = x.replace("<application", '<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.VIBRATE"/>\n    <application', 1)
           if "FRESHLYFirebaseMessagingService" not in x:
               x = x.replace("</application>", '''        <service
               android:name=".FRESHLYFirebaseMessagingService"
