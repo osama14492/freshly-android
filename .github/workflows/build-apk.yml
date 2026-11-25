@@ -53,6 +53,124 @@ jobs:
           manifest.write_text(m)
           print("Password/biometric source, dependencies and manifest installed.")
           PY
+      - name: Install native Firebase Cloud Messaging for background order alerts
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          # Add the Google Services Gradle plugin without replacing existing plugins.
+          root = Path("build.gradle")
+          rs = root.read_text()
+          if "com.google.gms.google-services" not in rs:
+              rs = rs.replace("plugins {", "plugins {\\n    id 'com.google.gms.google-services' version '4.4.2' apply false", 1)
+          root.write_text(rs)
+          app = Path("app/build.gradle")
+          a = app.read_text()
+          if "com.google.gms.google-services" not in a:
+              a = a.replace("plugins {", "plugins {\\n    id 'com.google.gms.google-services'", 1)
+          if "firebase-bom" not in a:
+              a = a.replace("dependencies {", "dependencies {\\n    implementation platform('com.google.firebase:firebase-bom:33.7.0')\\n    implementation 'com.google.firebase:firebase-messaging'\\n", 1)
+          app.write_text(a)
+          # Firebase client configuration from the user's existing google-services.json.
+          config = {
+            "project_info": {"project_number":"92150322225","firebase_url":"https://freshly-pos-default-rtdb.firebaseio.com","project_id":"freshly-pos","storage_bucket":"freshly-pos.firebasestorage.app"},
+            "client":[{"client_info":{"mobilesdk_app_id":"1:92150322225:android:ae1bd2020674d0a6863110","android_client_info":{"package_name":"com.freshly.premier"}},"oauth_client":[],"api_key":[{"current_key":"AIzaSyCVC0cT8nPvYMeH6mawHJl_AK0IQ6DRRG4"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],
+            "configuration_version":"1"
+          }
+          Path("app/google-services.json").write_text(json.dumps(config, indent=2) + "\\n")
+          # FCM service: displays high-priority order alerts even when WebView is closed.
+          service = r'''package com.freshly.premier
+          
+          import android.app.Notification
+          import android.app.NotificationChannel
+          import android.app.NotificationManager
+          import android.app.PendingIntent
+          import android.content.Context
+          import android.os.Build
+          import androidx.core.app.NotificationCompat
+          import com.google.firebase.messaging.FirebaseMessagingService
+          import com.google.firebase.messaging.RemoteMessage
+          
+          class FRESHLYFirebaseMessagingService : FirebaseMessagingService() {
+              override fun onNewToken(token: String) {
+                  super.onNewToken(token)
+                  getSharedPreferences("freshly_fcm", Context.MODE_PRIVATE).edit().putString("fcm_token", token).apply()
+              }
+          
+              override fun onMessageReceived(message: RemoteMessage) {
+                  super.onMessageReceived(message)
+                  val title = (message.notification?.title ?: message.data["title"] ?: "طلب جديد").take(80)
+                  val body = (message.notification?.body ?: message.data["body"] ?: "لديك طلب جديد على FRESHLY").take(500)
+                  val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                  val channelId = "freshly_orders"
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                      manager.getNotificationChannel(channelId) == null) {
+                      manager.createNotificationChannel(NotificationChannel(channelId, "إشعارات FRESHLY", NotificationManager.IMPORTANCE_HIGH))
+                  }
+                  val launch = packageManager.getLaunchIntentForPackage(packageName)
+                  val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                      (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+                  val pending = launch?.let { PendingIntent.getActivity(this, 7102, it, flags) }
+                  val notification = NotificationCompat.Builder(this, channelId)
+                      .setSmallIcon(R.mipmap.ic_launcher)
+                      .setContentTitle(title)
+                      .setContentText(body)
+                      .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                      .setPriority(NotificationCompat.PRIORITY_HIGH)
+                      .setAutoCancel(true)
+                      .apply { if (pending != null) setContentIntent(pending) }
+                      .build()
+                  manager.notify((message.data["orderId"] ?: System.currentTimeMillis().toString()).hashCode(), notification)
+              }
+          }
+          '''
+          target = Path("app/src/main/java/com/freshly/premier/FRESHLYFirebaseMessagingService.kt")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(service)
+          # Extend the existing secure WebView bridge with a guarded asynchronous token getter.
+          main = Path("app/src/main/java/com/freshly/premier/MainActivity.kt")
+          m = main.read_text()
+          if "FirebaseMessaging.getInstance().token" not in m:
+              m = m.replace("import android.util.Base64", "import android.util.Base64\\nimport com.google.firebase.messaging.FirebaseMessaging\\nimport org.json.JSONObject", 1)
+              anchor = "        @JavascriptInterface\\n        fun areNotificationsEnabled(): Boolean = areFreshlyNotificationsEnabled()"
+              addition = anchor + '''
+          
+                  @JavascriptInterface
+                  fun getFcmToken(callbackName: String) {
+                      if (!cashierPageActive || !callbackName.matches(Regex("[A-Za-z_$][A-Za-z0-9_$]{0,63}"))) return
+                      FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                          val value = if (task.isSuccessful) task.result else ""
+                          val js = "window[" + JSONObject.quote(callbackName) + "] && window[" +
+                              JSONObject.quote(callbackName) + "](" + JSONObject.quote(value ?: "") + ");"
+                          webView.post { webView.evaluateJavascript(js, null) }
+                      }
+                  }
+              '''
+              if anchor not in m: raise SystemExit("Secure MainActivity bridge insertion point missing")
+              m = m.replace(anchor, addition, 1)
+              main.write_text(m)
+          # Declare FCM service and required Android notification permission.
+          manifest = Path("app/src/main/AndroidManifest.xml")
+          x = manifest.read_text()
+          if 'android.permission.POST_NOTIFICATIONS' not in x:
+              x = x.replace("<application", '<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\\n    <uses-permission android:name="android.permission.VIBRATE"/>\\n    <application', 1)
+          if "FRESHLYFirebaseMessagingService" not in x:
+              x = x.replace("</application>", '''        <service
+              android:name=".FRESHLYFirebaseMessagingService"
+              android:exported="false">
+              <intent-filter>
+                  <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+              </intent-filter>
+          </service>
+          </application>''', 1)
+          manifest.write_text(x)
+          print("Installed FCM SDK, token bridge, background notification service, and manifest.")
+          PY
+          echo '--- FCM files ---'
+          grep -n "firebase-messaging\\|google-services" app/build.gradle build.gradle
+          grep -n "FRESHLYFirebaseMessagingService\\|POST_NOTIFICATIONS" app/src/main/AndroidManifest.xml
+          grep -n "getFcmToken" app/src/main/java/com/freshly/premier/MainActivity.kt
       - name: Use current POS and menu source files
         run: |
           test -f app/src/main/assets/home.html
