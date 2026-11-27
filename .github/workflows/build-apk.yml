@@ -72,6 +72,376 @@ jobs:
           PY
           cp cashier.html app/src/main/assets/cashier.html
           cp menu.html app/src/main/assets/menu.html
+
+          cat <<'BRIDGE_EOF' > app/src/main/assets/offline-bridge.js
+          /* FRESHLY Hybrid Offline/Online Firebase Bridge
+           * Works immediately on a router with NO internet (local storage & local order sync),
+           * and automatically syncs with Firebase Realtime Database and Auth when internet returns.
+           */
+          (function () {
+            'use strict';
+            const TREE_KEY = 'freshly_rtdb_local_cache_v1';
+            const QUEUE_KEY = 'freshly_rtdb_write_queue_v1';
+            const REACHABILITY_URL = 'https://freshly-pos-default-rtdb.firebaseio.com/.json?shallow=true';
+
+            let firebaseConfig = null;
+            let realFirebase = (window.firebase && typeof window.firebase.database === 'function') ? window.firebase : null;
+            let realApp = null;
+            let loadingSdk = false;
+            let hasRealInternet = false;
+            let currentAuthUser = null;
+            const authListeners = new Set();
+            const listeners = [];
+            const seen = new Set();
+
+            function readTree() {
+              try { return JSON.parse(localStorage.getItem(TREE_KEY) || '{}') || {}; } catch (_) { return {}; }
+            }
+            function writeTree(tree) {
+              try { localStorage.setItem(TREE_KEY, JSON.stringify(tree)); } catch (e) { console.warn('FRESHLY local cache write failed', e); }
+            }
+            function parts(path) {
+              return String(path || '').split('/').filter(Boolean);
+            }
+            function getPath(path) {
+              let v = readTree();
+              for (const p of parts(path)) {
+                if (v == null) return null;
+                v = v[p];
+              }
+              return v === undefined ? null : v;
+            }
+            function putPath(path, value, remove) {
+              const keys = parts(path);
+              if (!keys.length) return;
+              const tree = readTree();
+              let node = tree;
+              for (let i = 0; i < keys.length - 1; i++) {
+                if (!node[keys[i]] || typeof node[keys[i]] !== 'object') node[keys[i]] = {};
+                node = node[keys[i]];
+              }
+              if (remove) delete node[keys[keys.length - 1]];
+              else node[keys[keys.length - 1]] = value;
+              writeTree(tree);
+            }
+            function enqueue(op) {
+              let q = [];
+              try { q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch (_) {}
+              q.push(Object.assign({ qid: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2) }, op));
+              localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+              emitStatus();
+            }
+            function pendingCount() {
+              try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]').length; } catch (_) { return 0; }
+            }
+            function emitStatus() {
+              window.dispatchEvent(new CustomEvent('freshly-sync-state', {
+                detail: { online: hasRealInternet, pending: pendingCount() }
+              }));
+            }
+            function snapshot(value, key) {
+              return {
+                key: key || null,
+                val: () => value,
+                exists: () => value !== null && value !== undefined,
+                forEach: fn => {
+                  if (!value || typeof value !== 'object') return false;
+                  for (const k of Object.keys(value)) {
+                    if (fn(snapshot(value[k], k)) === true) return true;
+                  }
+                  return false;
+                }
+              };
+            }
+            function onlineRef(path) {
+              try { return (hasRealInternet && realFirebase && realApp) ? realFirebase.database().ref(path) : null; } catch (_) { return null; }
+            }
+
+            function notifyLocalListeners(changedPath) {
+              listeners.forEach(l => {
+                if (l.event === 'value' && (changedPath === l.path || changedPath.startsWith(l.path + '/'))) {
+                  l.callback(snapshot(getPath(l.path), null));
+                } else if (l.event === 'child_added' && changedPath.startsWith(l.path + '/')) {
+                  const rel = changedPath.slice(l.path.length + 1).split('/')[0];
+                  if (!rel) return;
+                  const val = getPath(l.path + '/' + rel);
+                  if (val != null) {
+                    const token = l.path + '|' + rel + '|child_added';
+                    if (!seen.has(token)) {
+                      seen.add(token);
+                      l.callback(snapshot(val, rel));
+                    }
+                  }
+                }
+              });
+            }
+
+            async function probeInternet(timeoutMs = 2500) {
+              if (!navigator.onLine) {
+                hasRealInternet = false;
+                emitStatus();
+                return false;
+              }
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), timeoutMs);
+              try {
+                const res = await fetch(REACHABILITY_URL, {
+                  method: 'GET',
+                  cache: 'no-store',
+                  signal: controller.signal
+                });
+                clearTimeout(timer);
+                hasRealInternet = res.ok || res.status === 401 || res.status === 403;
+              } catch (_) {
+                clearTimeout(timer);
+                hasRealInternet = false;
+              }
+              emitStatus();
+              return hasRealInternet;
+            }
+
+            async function flushQueue() {
+              if (!hasRealInternet || !realFirebase || !realApp) return;
+              let q = [];
+              try { q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch (_) {}
+              while (q.length && hasRealInternet) {
+                const op = q[0];
+                try {
+                  const ref = realFirebase.database().ref(op.path);
+                  if (op.type === 'set') await ref.set(op.value);
+                  else if (op.type === 'update') await ref.update(op.value || {});
+                  else if (op.type === 'remove') await ref.remove();
+                  q.shift();
+                  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+                } catch (e) {
+                  hasRealInternet = false;
+                  console.warn('FRESHLY sync paused; queued write retained', e);
+                  break;
+                }
+              }
+              emitStatus();
+            }
+
+            function attachRemote(l) {
+              const ref = onlineRef(l.path);
+              if (!ref || l.remoteAttached) return;
+              l.remoteAttached = true;
+              try {
+                ref.on(l.event, snap => {
+                  const val = snap.val();
+                  if (l.event === 'child_added' && val != null) {
+                    putPath(l.path + '/' + snap.key, val, false);
+                    const token = l.path + '|' + snap.key + '|' + l.event;
+                    if (!seen.has(token)) {
+                      seen.add(token);
+                      l.callback(snapshot(val, snap.key));
+                    }
+                  } else if (l.event === 'value') {
+                    putPath(l.path, val, false);
+                    l.callback(snapshot(val, snap.key));
+                  }
+                }, err => {
+                  l.remoteAttached = false;
+                  console.warn('Firebase listener paused', err);
+                });
+              } catch (_) {
+                l.remoteAttached = false;
+              }
+            }
+
+            function makeRef(path) {
+              path = String(path || '');
+              return {
+                set(value) {
+                  putPath(path, value, false);
+                  notifyLocalListeners(path);
+                  enqueue({ type: 'set', path, value });
+                  flushQueue();
+                  return Promise.resolve();
+                },
+                update(value) {
+                  const old = getPath(path) || {};
+                  putPath(path, Object.assign({}, old, value || {}), false);
+                  notifyLocalListeners(path);
+                  enqueue({ type: 'update', path, value });
+                  flushQueue();
+                  return Promise.resolve();
+                },
+                remove() {
+                  putPath(path, null, true);
+                  enqueue({ type: 'remove', path });
+                  flushQueue();
+                  return Promise.resolve();
+                },
+                on(event, callback) {
+                  const l = { path, event, callback, remoteAttached: false };
+                  listeners.push(l);
+                  if (event === 'child_added') {
+                    const children = getPath(path) || {};
+                    Object.keys(children).forEach(k => {
+                      const token = path + '|' + k + '|' + event;
+                      if (!seen.has(token)) {
+                        seen.add(token);
+                        callback(snapshot(children[k], k));
+                      }
+                    });
+                  } else if (event === 'value') {
+                    callback(snapshot(getPath(path), null));
+                  }
+                  attachRemote(l);
+                  return callback;
+                },
+                off(event, callback) {
+                  for (let i = listeners.length - 1; i >= 0; i--) {
+                    if (listeners[i].path === path && (!event || listeners[i].event === event) && (!callback || listeners[i].callback === callback)) {
+                      listeners.splice(i, 1);
+                    }
+                  }
+                  try { const r = onlineRef(path); if (r) r.off(event, callback); } catch (_) {}
+                },
+                once(event) {
+                  const r = onlineRef(path);
+                  if (r && hasRealInternet) {
+                    return r.once(event)
+                      .then(s => { putPath(path, s.val(), false); return snapshot(s.val(), s.key); })
+                      .catch(() => snapshot(getPath(path), null));
+                  }
+                  return Promise.resolve(snapshot(getPath(path), null));
+                }
+              };
+            }
+
+            function auth(...args) {
+              if (realFirebase && typeof realFirebase.auth === 'function') {
+                try {
+                  return realFirebase.auth(...args);
+                } catch (_) {}
+              }
+              return {
+                get currentUser() { return currentAuthUser; },
+                onAuthStateChanged(cb) {
+                  authListeners.add(cb);
+                  try { cb(currentAuthUser); } catch (_) {}
+                  return () => authListeners.delete(cb);
+                },
+                signInWithEmailAndPassword(email, _password) {
+                  currentAuthUser = { email, uid: 'local_' + btoa(String(email)).slice(0, 12) };
+                  authListeners.forEach(cb => { try { cb(currentAuthUser); } catch (_) {} });
+                  return Promise.resolve({ user: currentAuthUser });
+                },
+                signOut() {
+                  currentAuthUser = null;
+                  authListeners.forEach(cb => { try { cb(null); } catch (_) {} });
+                  return Promise.resolve();
+                }
+              };
+            }
+
+            function installFacade() {
+              const facade = {
+                get apps() { return realFirebase && realFirebase.apps ? realFirebase.apps : (realApp ? [realApp] : []); },
+                initializeApp(config) {
+                  firebaseConfig = config;
+                  if (realFirebase && typeof realFirebase.initializeApp === 'function') {
+                    try {
+                      realApp = realFirebase.apps && realFirebase.apps.length ? realFirebase.app() : realFirebase.initializeApp(config);
+                    } catch (_) {
+                      try { realApp = realFirebase.app(); } catch (__) {}
+                    }
+                  } else {
+                    realApp = { options: config, name: '[DEFAULT]' };
+                  }
+                  return realApp;
+                },
+                auth,
+                database() { return { ref: makeRef }; }
+              };
+              window.firebase = facade;
+            }
+
+            installFacade();
+
+            async function syncCycle() {
+              const reachable = await probeInternet(2500);
+              if (!reachable) return;
+
+              if (realFirebase && realApp) {
+                listeners.forEach(attachRemote);
+                await flushQueue();
+                return;
+              }
+              if (loadingSdk) return;
+              loadingSdk = true;
+              try {
+                window.firebase = undefined;
+                await new Promise((resolve, reject) => {
+                  const s = document.createElement('script');
+                  s.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js';
+                  s.onload = resolve;
+                  s.onerror = reject;
+                  document.head.appendChild(s);
+                });
+                await new Promise((resolve, reject) => {
+                  const s = document.createElement('script');
+                  s.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js';
+                  s.onload = resolve;
+                  s.onerror = reject;
+                  document.head.appendChild(s);
+                });
+                await new Promise((resolve, reject) => {
+                  const s = document.createElement('script');
+                  s.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js';
+                  s.onload = resolve;
+                  s.onerror = reject;
+                  document.head.appendChild(s);
+                });
+                realFirebase = window.firebase;
+                if (realFirebase && firebaseConfig) {
+                  realApp = realFirebase.apps && realFirebase.apps.length ? realFirebase.app() : realFirebase.initializeApp(firebaseConfig);
+                }
+                installFacade();
+                listeners.forEach(attachRemote);
+                await flushQueue();
+              } catch (e) {
+                installFacade();
+                console.warn('Firebase SDK unavailable; FRESHLY remains in offline mode', e);
+              } finally {
+                loadingSdk = false;
+              }
+            }
+
+            window.addEventListener('storage', e => {
+              if (e.key === TREE_KEY) {
+                notifyLocalListeners('pendingOrders');
+                notifyLocalListeners('orderTracking');
+              }
+            });
+
+            window.addEventListener('online', () => { syncCycle(); });
+            window.addEventListener('offline', () => { hasRealInternet = false; emitStatus(); });
+            window.addEventListener('load', () => { syncCycle(); });
+            setInterval(syncCycle, 20000);
+
+            window.addEventListener('freshly-sync-state', e => {
+              const el = document.getElementById('freshlyConnectionStatus');
+              if (!el) return;
+              const d = e.detail || {};
+              if (d.online) {
+                el.textContent = 'متصل بالإنترنت · مزامنة معلقة: ' + (d.pending || 0);
+              } else {
+                el.textContent = 'وضع محلي بدون نت · محفوظ: ' + (d.pending || 0);
+              }
+            });
+
+            window.FRESHLY_OFFLINE = {
+              flush: () => syncCycle(),
+              pending: pendingCount,
+              isOnline: () => hasRealInternet,
+              getLocal: path => getPath(path)
+            };
+          })();
+          BRIDGE_EOF
+
           python3 - <<'PY'
           from pathlib import Path
           p = Path('app/src/main/assets/offline-bridge.js')
@@ -146,3 +516,211 @@ jobs:
           cd -
           python3 - <<'PY'
           from pathlib import Path
+          p = Path("app/src/main/assets/cashier.html")
+          s = p.read_text()
+          replacements = {
+              "https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js": "firebase-app-compat.js",
+              "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js": "firebase-auth-compat.js",
+              "https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js": "firebase-database-compat.js",
+              "const base = 'https://www.gstatic.com/firebasejs/9.22.0/';": "const base = './';"
+          }
+          for old, new in replacements.items():
+              if old not in s:
+                  raise SystemExit("Expected Firebase reference not found: " + old)
+              s = s.replace(old, new)
+          p.write_text(s)
+          for name in ("firebase-app-compat.js", "firebase-auth-compat.js", "firebase-database-compat.js"):
+              path = Path("app/src/main/assets") / name
+              if not path.is_file() or path.stat().st_size < 10000:
+                  raise SystemExit("Firebase SDK asset missing or unexpectedly small: " + name)
+          print("Bundled Firebase App/Auth/Database compat SDKs into the APK assets.")
+          PY
+      - name: Install independent orders and expenses page in the app
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/main/assets
+          cp orders-expenses.html app/src/main/assets/orders-expenses.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/src/main/assets/home.html")
+          s = p.read_text()
+          marker = "<!-- FRESHLY_ORDERS_EXPENSES_ENTRY -->"
+          if marker not in s:
+              if "</nav>" not in s or "</head>" not in s:
+                  raise SystemExit("Home navigation or head section not found; refusing to alter the home screen.")
+              styles = """
+          <style>
+            .actions{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:14px!important}
+            .actions .action{display:flex!important;width:100%!important;height:88px!important;min-height:88px!important;max-width:none!important;align-items:center!important;overflow:hidden!important}.actions .action small{display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+            #freshlyOrdersExpensesEntry:active{transform:scale(.985)}
+          </style>
+          """
+              entry = '''
+          <!-- FRESHLY_ORDERS_EXPENSES_ENTRY -->
+          <a class="action" id="freshlyOrdersExpensesEntry" href="orders-expenses.html"><span class="ico">🧾</span><span><b>الطلبية والمصروفات الشخصية</b><small>المشتريات ونواقص الخامات والمصروفات والتقارير</small></span></a>
+          '''
+              s = s.replace("</head>", styles + "\n</head>", 1)
+              s = s.replace("</nav>", entry + "\n</nav>", 1)
+              p.write_text(s)
+          home = p.read_text()
+          if home.count('class="action"') != 3 or "freshlyOrdersExpensesEntry" not in home:
+              raise SystemExit("Home screen must contain exactly three equal action buttons.")
+          if "orders-expenses.html" not in home:
+              raise SystemExit("Orders and expenses page link is missing.")
+          page = Path("app/src/main/assets/orders-expenses.html")
+          if not page.is_file() or page.stat().st_size < 10000:
+              raise SystemExit("Orders and expenses page is missing or incomplete.")
+          print("Installed the standalone orders and expenses page and its home-screen entry.")
+          PY
+      - name: Validate cashier JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path('cashier.html').read_text()
+          scripts = re.findall(r'<script\b([^>]*)>(.*?)</script\s*>', html, flags=re.I | re.S)
+          inline = [body for attrs, body in scripts if not re.search(r'\bsrc\s*=', attrs, flags=re.I) and body.strip()]
+          if not inline:
+              raise SystemExit('No inline cashier JavaScript blocks found')
+          for index, body in enumerate(inline, 1):
+              Path(f'/tmp/freshly-cashier-{index}.js').write_text(body)
+          print(f'Extracted {len(inline)} inline cashier JavaScript blocks for syntax validation.')
+          PY
+          for source in /tmp/freshly-cashier-*.js; do node --check "$source"; done
+      - name: Validate orders and expenses JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path('orders-expenses.html').read_text()
+          scripts = re.findall(r'<script\b([^>]*)>(.*?)</script\s*>', html, flags=re.I | re.S)
+          inline = [body for attrs, body in scripts if not re.search(r'\bsrc\s*=', attrs, flags=re.I) and body.strip()]
+          if len(inline) != 1:
+              raise SystemExit(f'Expected one inline page script, found {len(inline)}')
+          Path('/tmp/freshly-orders-expenses.js').write_text(inline[0])
+          PY
+          node --check /tmp/freshly-orders-expenses.js
+      - name: Align Java and Kotlin JVM targets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle")
+          s = p.read_text()
+          needle = "android {"
+          addition = """android {
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
+          """
+          if needle not in s:
+              raise SystemExit("android block not found in app/build.gradle")
+          s = s.replace(needle, addition, 1)
+          p.write_text(s)
+          PY
+          echo '--- patched app/build.gradle ---'
+          cat app/build.gradle
+      - name: Inspect Android project
+        run: |
+          pwd
+          ls -la
+          find app -maxdepth 4 -type f | sort
+          echo '--- settings.gradle ---'
+          cat settings.gradle
+          echo '--- root build.gradle ---'
+          cat build.gradle
+          echo '--- app/build.gradle ---'
+          cat app/build.gradle
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+          dependency-graph: disabled
+      - name: Configure permanent FRESHLY signing key
+        env:
+          FRESHLY_KEYSTORE_BASE64: ${{ secrets.FRESHLY_KEYSTORE_BASE64 }}
+          FRESHLY_KEYSTORE_PASSWORD: ${{ secrets.FRESHLY_KEYSTORE_PASSWORD }}
+          FRESHLY_KEY_ALIAS: ${{ secrets.FRESHLY_KEY_ALIAS }}
+          FRESHLY_KEY_PASSWORD: ${{ secrets.FRESHLY_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FRESHLY_KEYSTORE_BASE64" || { echo "Missing GitHub secret: FRESHLY_KEYSTORE_BASE64"; exit 1; }
+          test -n "$FRESHLY_KEYSTORE_PASSWORD" || { echo "Missing GitHub secret: FRESHLY_KEYSTORE_PASSWORD"; exit 1; }
+          test -n "$FRESHLY_KEY_ALIAS" || { echo "Missing GitHub secret: FRESHLY_KEY_ALIAS"; exit 1; }
+          test -n "$FRESHLY_KEY_PASSWORD" || { echo "Missing GitHub secret: FRESHLY_KEY_PASSWORD"; exit 1; }
+          echo "$FRESHLY_KEYSTORE_BASE64" | base64 --decode > freshly-upload-key.jks
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle")
+          s = p.read_text()
+          if "FRESHLY_PERMANENT_SIGNING" in s:
+              raise SystemExit("Permanent signing config already exists; refusing to duplicate it.")
+          block = """
+          // FRESHLY_PERMANENT_SIGNING
+          android {
+              signingConfigs {
+                  freshlyPermanent {
+                      storeFile rootProject.file("freshly-upload-key.jks")
+                      storePassword System.getenv("FRESHLY_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("FRESHLY_KEY_ALIAS")
+                      keyPassword System.getenv("FRESHLY_KEY_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.freshlyPermanent
+                  }
+              }
+          }
+          """
+          p.write_text(s + "\n" + block)
+          print("Permanent signing configuration installed.")
+          PY
+      - name: Build debug APK
+        env:
+          FRESHLY_KEYSTORE_PASSWORD: ${{ secrets.FRESHLY_KEYSTORE_PASSWORD }}
+          FRESHLY_KEY_ALIAS: ${{ secrets.FRESHLY_KEY_ALIAS }}
+          FRESHLY_KEY_PASSWORD: ${{ secrets.FRESHLY_KEY_PASSWORD }}
+        run: gradle assembleDebug --stacktrace --info
+      - name: Prepare complete delivery package
+        run: |
+          mkdir -p delivery/Android-Project
+          # Package the exact patched source tree used to build this APK, not the older input ZIP.
+          cp -a settings.gradle build.gradle gradle.properties .github delivery/Android-Project/
+          mkdir -p delivery/Android-Project/app
+          cp app/build.gradle delivery/Android-Project/app/
+          cp -a app/src delivery/Android-Project/app/
+          cp README_AR.md delivery/Android-Project/README_AR.md
+          if [ -d cloudflare-worker ]; then cp -a cloudflare-worker delivery/Android-Project/; fi
+          cp cashier.html menu.html README_AR.md delivery/
+          cp app/build/outputs/apk/debug/app-debug.apk delivery/FRESHLY.apk
+          cp app/src/main/assets/freshly-logo.png delivery/freshly-logo.png
+          zip -qr FRESHLY-FINAL-PACKAGE.zip delivery
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FRESHLY-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+      - name: Upload standalone HTML files
+        uses: actions/upload-artifact@v4
+        with:
+          name: FRESHLY-HTML-FILES
+          path: |
+            cashier.html
+            menu.html
+          if-no-files-found: error
+      - name: Upload complete project ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: FRESHLY-FINAL-PACKAGE
+          path: FRESHLY-FINAL-PACKAGE.zip
+          if-no-files-found: error
