@@ -8,7 +8,7 @@ export default {
     if (request.method === "GET" && url.pathname === "/health") {
       return Response.json({
         ok: true,
-        worker: "freshly-order-push-v2",
+        worker: "freshly-order-push",
         configured: Boolean(env.FIREBASE_SERVICE_ACCOUNT && env.FCM_DEVICE_TOKEN)
       });
     }
