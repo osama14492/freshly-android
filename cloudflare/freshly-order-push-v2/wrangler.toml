@@ -1,4 +1,4 @@
-name = "freshly-order-push-v2"
+name = "freshly-order-push"
 main = "worker.js"
 compatibility_date = "2026-11-27"
 
