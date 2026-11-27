@@ -9,7 +9,7 @@ export default {
       return Response.json({
         ok: true,
         worker: "freshly-order-push-v2",
-        configured: Boolean(env.FIREBASE_SERVICE_ACCOUNT && env.FCM_DEVICE_TOKEN && env.ORDER_STATE)
+        configured: Boolean(env.FIREBASE_SERVICE_ACCOUNT && env.FCM_DEVICE_TOKEN)
       });
     }
 
@@ -17,7 +17,7 @@ export default {
   },
 
   async scheduled(_event, env, ctx) {
-    ctx.waitUntil(checkAndNotify(env));
+    ctx.waitUntil(checkAndNotify(env).catch((error) => console.error("Freshly push worker failed:", error)));
   }
 };
 
@@ -84,7 +84,6 @@ async function getAccessToken(serviceAccount) {
 async function checkAndNotify(env) {
   if (!env.FIREBASE_SERVICE_ACCOUNT) throw new Error("Missing FIREBASE_SERVICE_ACCOUNT secret");
   if (!env.FCM_DEVICE_TOKEN) throw new Error("Missing FCM_DEVICE_TOKEN secret");
-  if (!env.ORDER_STATE) throw new Error("Missing ORDER_STATE KV binding");
 
   let serviceAccount;
   try {
@@ -114,23 +113,26 @@ async function checkAndNotify(env) {
   if (!orders || typeof orders !== "object") return;
 
   const entries = Object.entries(orders);
-  const initialized = await env.ORDER_STATE.get("initialized");
+  const stateResponse = await fetch(DB_URL + "/_cloudflareOrderPushState.json?access_token=" + encodeURIComponent(accessToken));
+  const stateRaw = await stateResponse.text();
+  if (!stateResponse.ok) throw new Error("Firebase state read failed (" + stateResponse.status + "): " + stateRaw.slice(0, 500));
+  const state = stateRaw === "null" ? {} : JSON.parse(stateRaw);
+  const initialized = state.initialized;
 
   // First successful read establishes a baseline and prevents old orders
   // from generating a burst of notifications after deployment.
   if (!initialized) {
     for (const [id] of entries) {
-      await env.ORDER_STATE.put("order:" + id, "seen");
+      await writePushState(accessToken, id, "seen");
     }
-    await env.ORDER_STATE.put("initialized", "true");
+    await writePushState(accessToken, "initialized", true);
     return;
   }
 
   for (const [id, order] of entries) {
     if (!order || typeof order !== "object") continue;
 
-    const key = "order:" + id;
-    if (await env.ORDER_STATE.get(key)) continue;
+    if (state[id]) continue;
 
     const title = "طلب جديد من Freshly";
     const orderNumber = String(order.orderNumber || order.invoiceNumber || order.number || id);
@@ -174,6 +176,25 @@ async function checkAndNotify(env) {
       throw new Error("FCM send failed (" + sendResponse.status + "): " + sendText.slice(0, 700));
     }
 
-    await env.ORDER_STATE.put(key, "sent");
+    await writePushState(accessToken, id, "sent");
+  }
+}
+
+
+async function writePushState(accessToken, key, value) {
+  const path = key === "initialized"
+    ? "initialized"
+    : encodeURIComponent(key);
+  const response = await fetch(
+    DB_URL + "/_cloudflareOrderPushState/" + path + ".json?access_token=" + encodeURIComponent(accessToken),
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value)
+    }
+  );
+  const result = await response.text();
+  if (!response.ok) {
+    throw new Error("Firebase state write failed (" + response.status + "): " + result.slice(0, 500));
   }
 }
