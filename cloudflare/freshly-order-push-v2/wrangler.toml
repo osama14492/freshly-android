@@ -1,6 +1,7 @@
 name = "freshly-order-push"
 main = "worker.js"
 compatibility_date = "2026-11-27"
+keep_vars = true
 
 [triggers]
 crons = ["* * * * *"]
