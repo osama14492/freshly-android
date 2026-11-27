@@ -1,24 +1,31 @@
-# Freshly Order Push v2
+# Freshly Order Push Worker
 
-This directory contains an isolated Cloudflare Worker for Freshly POS background order notifications.
+This directory contains the replacement code for the existing Cloudflare Worker `freshly-order-push`. It is intentionally isolated in its own repository folder and branch so the current Worker is not changed until Cloudflare connects and deploys this branch.
 
-## Runtime requirements
+## Runtime secrets
 
-Configure these bindings on the Worker in Cloudflare:
+The Worker reads these existing secrets:
 
-- Secret `FIREBASE_SERVICE_ACCOUNT`: the complete Firebase service-account JSON (never commit it to GitHub).
-- Secret `FCM_DEVICE_TOKEN`: the cashier device's current FCM registration token.
-- KV namespace binding `ORDER_STATE`: use the existing namespace already used by `freshly-order-push` so both versions share idempotency keys during a controlled cutover.
+- `FIREBASE_SERVICE_ACCOUNT`: complete Firebase service-account JSON.
+- `FCM_DEVICE_TOKEN`: current cashier-device FCM registration token.
 
-The Worker polls `/pendingOrders.json` once per minute, uses a Google service-account OAuth access token for the Firebase Realtime Database REST API, and sends FCM HTTP v1 notifications. It stores `initialized` and `order:<id>` markers in KV.
+Do not put either secret in GitHub.
 
-## Safe rollout
+## What it does
 
-1. Do not delete or disable the existing Worker before v2 is configured and tested.
-2. Connect this directory to a separate Worker named `freshly-order-push-v2` using Cloudflare Workers Builds (root directory: `cloudflare/freshly-order-push-v2`).
-3. Add the runtime secrets and KV binding listed above. Do not paste secrets into GitHub.
-4. Check `/health` on the new Worker's workers.dev URL. It should report `configured: true`.
-5. Confirm the Cron Trigger is set to every minute and inspect invocation logs for Firebase and FCM errors.
-6. Only after a real test order generates exactly one notification should the old Worker be paused.
+- Every minute, reads `/pendingOrders.json` from the existing Firebase Realtime Database using a Google service-account OAuth token.
+- Sends FCM HTTP v1 notifications to the cashier device.
+- Records deduplication markers under the additive RTDB path `/_cloudflareOrderPushState`. It does not edit, delete, or replace existing order records.
+- On first successful poll, establishes a baseline of existing order IDs to avoid sending old orders as new notifications.
+- Exposes `/health` to confirm that the two required secrets are present.
 
-The first successful database poll initializes a baseline of existing order IDs to avoid sending a burst of old notifications. It does not modify existing order records.
+## Connect safely
+
+1. Keep the existing Worker named `freshly-order-push`; do not delete it or create a second Worker.
+2. Open that existing Worker > Settings > Builds > Connect.
+3. Connect repository `osama14492/freshly-android`, branch `cloudflare-order-push-v2`, root directory `cloudflare/freshly-order-push-v2`.
+4. Confirm the Worker name remains `freshly-order-push`.
+5. Keep the existing secrets. Wrangler does not delete encrypted secrets during deploy unless explicitly told to delete them.
+6. After deployment, check `/health`, then inspect Cron invocation logs. Only accept the new version after Firebase reads and FCM sends succeed.
+
+The previous deployed Worker version remains available in Cloudflare Deployments for rollback. Do not delete old versions or Firebase data.
