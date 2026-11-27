@@ -29,3 +29,5 @@ Do not put either secret in GitHub.
 6. After deployment, check `/health`, then inspect Cron invocation logs. Only accept the new version after Firebase reads and FCM sends succeed.
 
 The previous deployed Worker version remains available in Cloudflare Deployments for rollback. Do not delete old versions or Firebase data.
+
+<!-- Build trigger: Cloudflare root directory configuration saved. -->
