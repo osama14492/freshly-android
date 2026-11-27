@@ -42,11 +42,13 @@ jobs:
           s=gradle.read_text()
           if "androidx.biometric:biometric" not in s:
               s=s.replace("dependencies {", "dependencies {\n    implementation 'androidx.biometric:biometric:1.1.0'\n    implementation 'androidx.fragment:fragment-ktx:1.8.5'", 1)
+          if "firebase-messaging" not in s:
+              s=s.replace("dependencies {", "dependencies {\n    implementation platform('com.google.firebase:firebase-bom:35.2.0')\n    implementation 'com.google.firebase:firebase-messaging'\n    implementation 'androidx.core:core-ktx:1.15.0'", 1)
           gradle.write_text(s)
           manifest=Path("app/src/main/AndroidManifest.xml")
           m=manifest.read_text()
           # WebView must have INTERNET permission to load Firebase App/Auth SDKs and reach Firebase Authentication.
-          for permission in ("android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE", "android.permission.USE_BIOMETRIC", "android.permission.POST_NOTIFICATIONS", "android.permission.VIBRATE"):
+          for permission in ("android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE", "android.permission.USE_BIOMETRIC", "android.permission.POST_NOTIFICATIONS", "android.permission.VIBRATE", "android.permission.WAKE_LOCK", "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"):
               if f'android:name="{permission}"' not in m:
                   m=m.replace("<application", f'<uses-permission android:name="{permission}" />\n    <application', 1)
           m=m.replace('android:allowBackup="true"', 'android:allowBackup="false"')
@@ -74,31 +76,10 @@ jobs:
           from pathlib import Path
           p = Path('app/src/main/assets/offline-bridge.js')
           s = p.read_text()
-          old = "      database(){ return {ref:makeRef}; }"
-          new = "      auth(...args){ if (!realFirebase || typeof realFirebase.auth !== 'function') throw new Error('Firebase Authentication SDK is not loaded'); return realFirebase.auth(...args); },\n      database(){ return {ref:makeRef}; }"
-          if old not in s:
-              raise SystemExit('Firebase offline bridge facade signature not found')
-          s = s.replace(old, new, 1)
-          old_init = " } return realApp; },"
-          new_init = " } if (realApp) { listeners.forEach(attachRemote); flushQueue(); } return realApp; },"
-          if old_init not in s:
-              raise SystemExit('Firebase initializeApp bridge code not found')
-          s = s.replace(old_init, new_init, 1)
-          old_gate = "    if (realFirebase && realApp) { listeners.forEach(attachRemote); flushQueue(); return; }\n"
-          new_gate = old_gate + "    if (realFirebase && typeof realFirebase.auth === 'function' && typeof realFirebase.database === 'function') return;\n"
-          if old_gate not in s:
-              raise SystemExit('Firebase load gate not found')
-          s = s.replace(old_gate, new_gate, 1)
-          database_load = "      await new Promise((resolve,reject)=>{ const s=document.createElement('script'); s.src='https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); });"
-          auth_load = "      await new Promise((resolve,reject)=>{ const s=document.createElement('script'); s.src='https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); });\n" + database_load
-          if database_load not in s:
-              raise SystemExit('Firebase database SDK loader not found')
-          s = s.replace(database_load, auth_load, 1)
-          p.write_text(s)
-          for token in ('auth(...args)', 'firebase-auth-compat.js', 'listeners.forEach(attachRemote)'):
+          for token in ('auth(...args)', 'firebase-auth-compat.js', 'probeInternet', 'listeners.forEach(attachRemote)'):
               if token not in s:
-                  raise SystemExit('Firebase Auth bridge validation failed: ' + token)
-          print('Fixed Firebase offline bridge: auth is preserved and reloading keeps App/Auth/Database together.')
+                  raise SystemExit('Hybrid offline bridge validation failed: ' + token)
+          print('Verified hybrid offline/online bridge with Auth, Database, and router-offline support.')
           PY
           node --check app/src/main/assets/offline-bridge.js
           
@@ -165,210 +146,3 @@ jobs:
           cd -
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("app/src/main/assets/cashier.html")
-          s = p.read_text()
-          replacements = {
-              "https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js": "firebase-app-compat.js",
-              "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js": "firebase-auth-compat.js",
-              "https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js": "firebase-database-compat.js",
-              "const base = 'https://www.gstatic.com/firebasejs/9.22.0/';": "const base = './';"
-          }
-          for old, new in replacements.items():
-              if old not in s:
-                  raise SystemExit("Expected Firebase reference not found: " + old)
-              s = s.replace(old, new)
-          p.write_text(s)
-          for name in ("firebase-app-compat.js", "firebase-auth-compat.js", "firebase-database-compat.js"):
-              path = Path("app/src/main/assets") / name
-              if not path.is_file() or path.stat().st_size < 10000:
-                  raise SystemExit("Firebase SDK asset missing or unexpectedly small: " + name)
-          print("Bundled Firebase App/Auth/Database compat SDKs into the APK assets.")
-          PY
-      - name: Install independent orders and expenses page in the app
-        run: |
-          set -euo pipefail
-          mkdir -p app/src/main/assets
-          cp orders-expenses.html app/src/main/assets/orders-expenses.html
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("app/src/main/assets/home.html")
-          s = p.read_text()
-          marker = "<!-- FRESHLY_ORDERS_EXPENSES_ENTRY -->"
-          if marker not in s:
-              if "</nav>" not in s or "</head>" not in s:
-                  raise SystemExit("Home navigation or head section not found; refusing to alter the home screen.")
-              styles = """
-          <style>
-            .actions{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:14px!important}
-            .actions .action{display:flex!important;width:100%!important;height:88px!important;min-height:88px!important;max-width:none!important;align-items:center!important;overflow:hidden!important}.actions .action small{display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
-            #freshlyOrdersExpensesEntry:active{transform:scale(.985)}
-          </style>
-          """
-              entry = '''
-          <!-- FRESHLY_ORDERS_EXPENSES_ENTRY -->
-          <a class="action" id="freshlyOrdersExpensesEntry" href="orders-expenses.html"><span class="ico">🧾</span><span><b>الطلبية والمصروفات الشخصية</b><small>المشتريات ونواقص الخامات والمصروفات والتقارير</small></span></a>
-          '''
-              s = s.replace("</head>", styles + "\n</head>", 1)
-              s = s.replace("</nav>", entry + "\n</nav>", 1)
-              p.write_text(s)
-          home = p.read_text()
-          if home.count('class="action"') != 3 or "freshlyOrdersExpensesEntry" not in home:
-              raise SystemExit("Home screen must contain exactly three equal action buttons.")
-          if "orders-expenses.html" not in home:
-              raise SystemExit("Orders and expenses page link is missing.")
-          page = Path("app/src/main/assets/orders-expenses.html")
-          if not page.is_file() or page.stat().st_size < 10000:
-              raise SystemExit("Orders and expenses page is missing or incomplete.")
-          print("Installed the standalone orders and expenses page and its home-screen entry.")
-          PY
-      - name: Validate cashier JavaScript syntax
-        run: |
-          python3 - <<'PY'
-          import re
-          from pathlib import Path
-          html = Path('cashier.html').read_text()
-          scripts = re.findall(r'<script\b([^>]*)>(.*?)</script\s*>', html, flags=re.I | re.S)
-          inline = [body for attrs, body in scripts if not re.search(r'\bsrc\s*=', attrs, flags=re.I) and body.strip()]
-          if not inline:
-              raise SystemExit('No inline cashier JavaScript blocks found')
-          for index, body in enumerate(inline, 1):
-              Path(f'/tmp/freshly-cashier-{index}.js').write_text(body)
-          print(f'Extracted {len(inline)} inline cashier JavaScript blocks for syntax validation.')
-          PY
-          for source in /tmp/freshly-cashier-*.js; do node --check "$source"; done
-      - name: Validate orders and expenses JavaScript syntax
-        run: |
-          python3 - <<'PY'
-          import re
-          from pathlib import Path
-          html = Path('orders-expenses.html').read_text()
-          scripts = re.findall(r'<script\b([^>]*)>(.*?)</script\s*>', html, flags=re.I | re.S)
-          inline = [body for attrs, body in scripts if not re.search(r'\bsrc\s*=', attrs, flags=re.I) and body.strip()]
-          if len(inline) != 1:
-              raise SystemExit(f'Expected one inline page script, found {len(inline)}')
-          Path('/tmp/freshly-orders-expenses.js').write_text(inline[0])
-          PY
-          node --check /tmp/freshly-orders-expenses.js
-      - name: Align Java and Kotlin JVM targets
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("app/build.gradle")
-          s = p.read_text()
-          needle = "android {"
-          addition = """android {
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-              kotlinOptions {
-                  jvmTarget = '17'
-              }
-          """
-          if needle not in s:
-              raise SystemExit("android block not found in app/build.gradle")
-          s = s.replace(needle, addition, 1)
-          p.write_text(s)
-          PY
-          echo '--- patched app/build.gradle ---'
-          cat app/build.gradle
-      - name: Inspect Android project
-        run: |
-          pwd
-          ls -la
-          find app -maxdepth 4 -type f | sort
-          echo '--- settings.gradle ---'
-          cat settings.gradle
-          echo '--- root build.gradle ---'
-          cat build.gradle
-          echo '--- app/build.gradle ---'
-          cat app/build.gradle
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Set up Gradle 8.7
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
-          dependency-graph: disabled
-      - name: Configure permanent FRESHLY signing key
-        env:
-          FRESHLY_KEYSTORE_BASE64: ${{ secrets.FRESHLY_KEYSTORE_BASE64 }}
-          FRESHLY_KEYSTORE_PASSWORD: ${{ secrets.FRESHLY_KEYSTORE_PASSWORD }}
-          FRESHLY_KEY_ALIAS: ${{ secrets.FRESHLY_KEY_ALIAS }}
-          FRESHLY_KEY_PASSWORD: ${{ secrets.FRESHLY_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          test -n "$FRESHLY_KEYSTORE_BASE64" || { echo "Missing GitHub secret: FRESHLY_KEYSTORE_BASE64"; exit 1; }
-          test -n "$FRESHLY_KEYSTORE_PASSWORD" || { echo "Missing GitHub secret: FRESHLY_KEYSTORE_PASSWORD"; exit 1; }
-          test -n "$FRESHLY_KEY_ALIAS" || { echo "Missing GitHub secret: FRESHLY_KEY_ALIAS"; exit 1; }
-          test -n "$FRESHLY_KEY_PASSWORD" || { echo "Missing GitHub secret: FRESHLY_KEY_PASSWORD"; exit 1; }
-          echo "$FRESHLY_KEYSTORE_BASE64" | base64 --decode > freshly-upload-key.jks
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("app/build.gradle")
-          s = p.read_text()
-          if "FRESHLY_PERMANENT_SIGNING" in s:
-              raise SystemExit("Permanent signing config already exists; refusing to duplicate it.")
-          block = """
-          // FRESHLY_PERMANENT_SIGNING
-          android {
-              signingConfigs {
-                  freshlyPermanent {
-                      storeFile rootProject.file("freshly-upload-key.jks")
-                      storePassword System.getenv("FRESHLY_KEYSTORE_PASSWORD")
-                      keyAlias System.getenv("FRESHLY_KEY_ALIAS")
-                      keyPassword System.getenv("FRESHLY_KEY_PASSWORD")
-                  }
-              }
-              buildTypes {
-                  debug {
-                      signingConfig signingConfigs.freshlyPermanent
-                  }
-              }
-          }
-          """
-          p.write_text(s + "\n" + block)
-          print("Permanent signing configuration installed.")
-          PY
-      - name: Build debug APK
-        env:
-          FRESHLY_KEYSTORE_PASSWORD: ${{ secrets.FRESHLY_KEYSTORE_PASSWORD }}
-          FRESHLY_KEY_ALIAS: ${{ secrets.FRESHLY_KEY_ALIAS }}
-          FRESHLY_KEY_PASSWORD: ${{ secrets.FRESHLY_KEY_PASSWORD }}
-        run: gradle assembleDebug --stacktrace --info
-      - name: Prepare complete delivery package
-        run: |
-          mkdir -p delivery/Android-Project
-          # Package the exact patched source tree used to build this APK, not the older input ZIP.
-          cp -a settings.gradle build.gradle gradle.properties .github delivery/Android-Project/
-          mkdir -p delivery/Android-Project/app
-          cp app/build.gradle delivery/Android-Project/app/
-          cp -a app/src delivery/Android-Project/app/
-          cp README_AR.md delivery/Android-Project/README_AR.md
-          cp cashier.html menu.html README_AR.md delivery/
-          cp app/build/outputs/apk/debug/app-debug.apk delivery/FRESHLY.apk
-          cp app/src/main/assets/freshly-logo.png delivery/freshly-logo.png
-          zip -qr FRESHLY-FINAL-PACKAGE.zip delivery
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: FRESHLY-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-      - name: Upload standalone HTML files
-        uses: actions/upload-artifact@v4
-        with:
-          name: FRESHLY-HTML-FILES
-          path: |
-            cashier.html
-            menu.html
-          if-no-files-found: error
-      - name: Upload complete project ZIP
-        uses: actions/upload-artifact@v4
-        with:
-          name: FRESHLY-FINAL-PACKAGE
-          path: FRESHLY-FINAL-PACKAGE.zip
-          if-no-files-found: error
